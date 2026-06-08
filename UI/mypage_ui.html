@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마이페이지</title>
+  <link rel="stylesheet" href="service_common.css">
+</head>
+<body>
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>마이페이지</h1>
+        <p>내 계정 정보, 권한, 최근 접속 환경을 확인합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="grid">
+      <article class="card panel">
+        <h2>내 정보</h2>
+        <form class="form">
+          <label>이름
+            <input type="text" value="박관리">
+          </label>
+          <label>아이디
+            <input type="text" value="admin01">
+          </label>
+          <label>역할
+            <input type="text" value="관리자">
+          </label>
+          <button class="primary-button" type="button">정보 수정</button>
+        </form>
+      </article>
+
+      <aside class="card panel">
+        <h2>최근 접속 환경</h2>
+        <ul class="list">
+          <li>
+            <strong>현재 브라우저</strong>
+            <span>Chrome · macOS · 허용 IP</span>
+          </li>
+          <li>
+            <strong>최근 로그인</strong>
+            <span>오늘 14:58 · 192.168.0.12</span>
+          </li>
+          <li>
+            <strong>내 권한</strong>
+            <span>사용자 관리, 문서 관리, 로그 조회 가능</span>
+          </li>
+        </ul>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

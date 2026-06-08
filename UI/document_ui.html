@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>문서 관리</title>
+  <link rel="stylesheet" href="service_common.css">
+</head>
+<body>
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>문서 관리</h1>
+        <p>암호화 문서를 조회, 검색, 업로드, 삭제합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="grid">
+      <article class="card panel">
+        <h2>문서 목록</h2>
+        <div class="toolbar">
+          <input type="search" placeholder="문서명 검색">
+          <select>
+            <option>전체 등급</option>
+            <option>내부</option>
+            <option>기밀</option>
+            <option>최고기밀</option>
+          </select>
+          <button class="primary-button" type="button">검색</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>문서명</th>
+              <th>등급</th>
+              <th>소유자</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>고객정보_정산.xlsx</td>
+              <td>기밀</td>
+              <td>팀장</td>
+              <td><span class="badge">보호 중</span></td>
+            </tr>
+            <tr>
+              <td>서버접근_계정.pdf</td>
+              <td>최고기밀</td>
+              <td>관리자</td>
+              <td><span class="badge warn">승인 대기</span></td>
+            </tr>
+            <tr>
+              <td>프로젝트_계약서.docx</td>
+              <td>내부</td>
+              <td>사원</td>
+              <td><span class="badge">보호 중</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <aside class="card panel">
+        <h2>문서 업로드</h2>
+        <form class="form">
+          <label>문서명
+            <input type="text" placeholder="예: 계약서.docx">
+          </label>
+          <label>보안 등급
+            <select>
+              <option>내부</option>
+              <option>기밀</option>
+              <option>최고기밀</option>
+            </select>
+          </label>
+          <label>설명
+            <textarea placeholder="문서 설명을 입력하세요"></textarea>
+          </label>
+          <button class="primary-button" type="button">업로드 등록</button>
+        </form>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

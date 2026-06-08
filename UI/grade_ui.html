@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>등급 관리</title>
+  <link rel="stylesheet" href="service_common.css">
+</head>
+<body>
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>등급 관리</h1>
+        <p>문서 보안 등급과 등급별 처리 정책을 관리합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="grid">
+      <article class="card panel">
+        <h2>보안 등급</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>등급</th>
+              <th>설명</th>
+              <th>다운로드 정책</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>내부</td>
+              <td>사내 공유 문서</td>
+              <td>권한 내 허용</td>
+              <td><span class="badge">사용</span></td>
+            </tr>
+            <tr>
+              <td>기밀</td>
+              <td>민감 업무 자료</td>
+              <td>로그 기록 필수</td>
+              <td><span class="badge">사용</span></td>
+            </tr>
+            <tr>
+              <td>최고기밀</td>
+              <td>핵심 보안 자료</td>
+              <td>승인 후 허용</td>
+              <td><span class="badge warn">승인 필요</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <aside class="card panel">
+        <h2>등급 정책 추가</h2>
+        <form class="form">
+          <label>등급명
+            <input type="text" placeholder="예: 대외비">
+          </label>
+          <label>다운로드 정책
+            <select>
+              <option>권한 내 허용</option>
+              <option>승인 후 허용</option>
+              <option>다운로드 차단</option>
+            </select>
+          </label>
+          <label>설명
+            <textarea placeholder="등급 설명을 입력하세요"></textarea>
+          </label>
+          <button class="primary-button" type="button">등급 저장</button>
+        </form>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>알림</title>
+  <link rel="stylesheet" href="service_common.css">
+</head>
+<body>
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>알림</h1>
+        <p>승인 요청, 보안 이벤트, 시스템 공지를 확인합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="grid">
+      <article class="card panel">
+        <h2>알림 목록</h2>
+        <ul class="list">
+          <li>
+            <strong>문서 다운로드 승인 요청</strong>
+            <span>서버접근_계정.pdf 다운로드 승인 대기 중입니다.</span>
+          </li>
+          <li>
+            <strong>외부 IP 접근 차단</strong>
+            <span>허용되지 않은 IP 접근 시도가 차단되었습니다.</span>
+          </li>
+          <li>
+            <strong>세션 만료 예정</strong>
+            <span>장시간 미사용 계정 세션이 곧 종료됩니다.</span>
+          </li>
+        </ul>
+      </article>
+
+      <aside class="card panel">
+        <h2>알림 설정</h2>
+        <form class="form">
+          <label>알림 대상
+            <select>
+              <option>관리자</option>
+              <option>팀장</option>
+              <option>전체 사용자</option>
+            </select>
+          </label>
+          <label>알림 종류
+            <select>
+              <option>보안 이벤트</option>
+              <option>승인 요청</option>
+              <option>시스템 공지</option>
+            </select>
+          </label>
+          <button class="primary-button" type="button">설정 저장</button>
+        </form>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
