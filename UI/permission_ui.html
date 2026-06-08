@@ -6,7 +6,7 @@
   <title>권한 관리</title>
   <link rel="stylesheet" href="service_common.css">
 </head>
-<body>
+<body data-page="permissions">
   <main class="page">
     <section class="topbar">
       <div>
@@ -29,51 +29,30 @@
               <th>관리</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>사원</td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge warn">제한</span></td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge danger">차단</span></td>
-            </tr>
-            <tr>
-              <td>팀장</td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge warn">팀 한정</span></td>
-            </tr>
-            <tr>
-              <td>관리자</td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge">허용</span></td>
-              <td><span class="badge">전체</span></td>
-            </tr>
+          <tbody data-permissions>
           </tbody>
         </table>
       </article>
 
       <aside class="card panel">
         <h2>권한 설정</h2>
-        <form class="form">
+        <form class="form" data-permission-form>
           <label>역할
-            <select>
+            <select name="role">
               <option>사원</option>
               <option>팀장</option>
               <option>관리자</option>
             </select>
           </label>
           <label>대상 문서 등급
-            <select>
+            <select name="grade">
               <option>내부</option>
               <option>기밀</option>
               <option>최고기밀</option>
             </select>
           </label>
           <label>접근 정책
-            <select>
+            <select name="policy">
               <option>조회만 허용</option>
               <option>다운로드 허용</option>
               <option>승인 후 다운로드</option>
@@ -85,5 +64,6 @@
       </aside>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>

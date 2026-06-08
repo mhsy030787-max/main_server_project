@@ -6,7 +6,7 @@
   <title>등급 관리</title>
   <link rel="stylesheet" href="service_common.css">
 </head>
-<body>
+<body data-page="grades">
   <main class="page">
     <section class="topbar">
       <div>
@@ -28,49 +28,32 @@
               <th>상태</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>내부</td>
-              <td>사내 공유 문서</td>
-              <td>권한 내 허용</td>
-              <td><span class="badge">사용</span></td>
-            </tr>
-            <tr>
-              <td>기밀</td>
-              <td>민감 업무 자료</td>
-              <td>로그 기록 필수</td>
-              <td><span class="badge">사용</span></td>
-            </tr>
-            <tr>
-              <td>최고기밀</td>
-              <td>핵심 보안 자료</td>
-              <td>승인 후 허용</td>
-              <td><span class="badge warn">승인 필요</span></td>
-            </tr>
+          <tbody data-grades>
           </tbody>
         </table>
       </article>
 
       <aside class="card panel">
         <h2>등급 정책 추가</h2>
-        <form class="form">
+        <form class="form" data-grade-form>
           <label>등급명
-            <input type="text" placeholder="예: 대외비">
+            <input name="name" type="text" placeholder="예: 대외비" required>
           </label>
           <label>다운로드 정책
-            <select>
+            <select name="policy">
               <option>권한 내 허용</option>
               <option>승인 후 허용</option>
               <option>다운로드 차단</option>
             </select>
           </label>
           <label>설명
-            <textarea placeholder="등급 설명을 입력하세요"></textarea>
+            <textarea name="description" placeholder="등급 설명을 입력하세요"></textarea>
           </label>
           <button class="primary-button" type="button">등급 저장</button>
         </form>
       </aside>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>

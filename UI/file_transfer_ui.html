@@ -6,7 +6,7 @@
   <title>파일 업로드/다운로드</title>
   <link rel="stylesheet" href="service_common.css">
 </head>
-<body>
+<body data-page="transfers">
   <main class="page">
     <section class="topbar">
       <div>
@@ -19,19 +19,19 @@
     <section class="grid">
       <article class="card panel">
         <h2>파일 업로드</h2>
-        <form class="form">
+        <form class="form" data-transfer-form>
           <label>파일 선택
-            <input type="file">
+            <input name="file" type="file">
           </label>
           <label>보안 등급
-            <select>
+            <select name="grade">
               <option>내부</option>
               <option>기밀</option>
               <option>최고기밀</option>
             </select>
           </label>
           <label>메모
-            <textarea placeholder="업로드 사유 또는 설명"></textarea>
+            <textarea name="memo" placeholder="업로드 사유 또는 설명"></textarea>
           </label>
           <button class="primary-button" type="button">암호화 업로드</button>
         </form>
@@ -39,22 +39,11 @@
 
       <aside class="card panel">
         <h2>다운로드 대기</h2>
-        <ul class="list">
-          <li>
-            <strong>고객정보_정산.xlsx</strong>
-            <span>권한 확인 완료 · 다운로드 가능</span>
-          </li>
-          <li>
-            <strong>서버접근_계정.pdf</strong>
-            <span>관리자 승인 필요</span>
-          </li>
-          <li>
-            <strong>프로젝트_계약서.docx</strong>
-            <span>다운로드 로그 기록 후 제공</span>
-          </li>
+        <ul class="list" data-transfers>
         </ul>
       </aside>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>

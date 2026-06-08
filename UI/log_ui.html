@@ -6,7 +6,7 @@
   <title>로그 조회</title>
   <link rel="stylesheet" href="service_common.css">
 </head>
-<body>
+<body data-page="logs">
   <main class="page">
     <section class="topbar">
       <div>
@@ -18,17 +18,17 @@
 
     <section class="card panel">
       <h2>접속/다운로드 로그</h2>
-      <div class="toolbar">
-        <input type="date">
-        <select>
+      <form class="toolbar" data-log-form>
+        <input name="date" type="date">
+        <select name="type">
           <option>전체 이벤트</option>
           <option>로그인</option>
           <option>다운로드</option>
           <option>차단</option>
         </select>
-        <input type="search" placeholder="사용자 검색">
-        <button class="primary-button" type="button">조회</button>
-      </div>
+        <input name="user" type="search" placeholder="사용자 검색">
+        <button class="primary-button" type="submit">조회</button>
+      </form>
       <table>
         <thead>
           <tr>
@@ -39,31 +39,11 @@
             <th>결과</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>14:58</td>
-            <td>admin01</td>
-            <td>로그인</td>
-            <td>192.168.0.12</td>
-            <td><span class="badge">성공</span></td>
-          </tr>
-          <tr>
-            <td>14:42</td>
-            <td>leader01</td>
-            <td>문서 다운로드</td>
-            <td>192.168.0.21</td>
-            <td><span class="badge">기록</span></td>
-          </tr>
-          <tr>
-            <td>13:20</td>
-            <td>unknown</td>
-            <td>외부 접근</td>
-            <td>45.12.80.3</td>
-            <td><span class="badge danger">차단</span></td>
-          </tr>
+        <tbody data-logs>
         </tbody>
       </table>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>

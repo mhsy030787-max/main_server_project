@@ -6,7 +6,7 @@
   <title>사용자 관리</title>
   <link rel="stylesheet" href="service_common.css">
 </head>
-<body>
+<body data-page="users">
   <main class="page">
     <section class="topbar">
       <div>
@@ -20,8 +20,8 @@
       <article class="card panel">
         <h2>사용자 목록</h2>
         <div class="toolbar">
-          <input type="search" placeholder="이름 또는 아이디 검색">
-          <select>
+          <input data-user-search type="search" placeholder="이름 또는 아이디 검색">
+          <select data-user-role>
             <option>전체 역할</option>
             <option>사원</option>
             <option>팀장</option>
@@ -37,40 +37,22 @@
               <th>상태</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>김사원</td>
-              <td>staff01</td>
-              <td>사원</td>
-              <td><span class="badge">활성</span></td>
-            </tr>
-            <tr>
-              <td>이팀장</td>
-              <td>leader01</td>
-              <td>팀장</td>
-              <td><span class="badge">활성</span></td>
-            </tr>
-            <tr>
-              <td>박관리</td>
-              <td>admin01</td>
-              <td>관리자</td>
-              <td><span class="badge warn">점검</span></td>
-            </tr>
+          <tbody data-users>
           </tbody>
         </table>
       </article>
 
       <aside class="card panel">
         <h2>사용자 등록</h2>
-        <form class="form">
+        <form class="form" data-user-form>
           <label>이름
-            <input type="text" placeholder="이름">
+            <input name="name" type="text" placeholder="이름" required>
           </label>
           <label>아이디
-            <input type="text" placeholder="로그인 아이디">
+            <input name="userId" type="text" placeholder="로그인 아이디" required>
           </label>
           <label>역할
-            <select>
+            <select name="role">
               <option>사원</option>
               <option>팀장</option>
               <option>관리자</option>
@@ -81,5 +63,6 @@
       </aside>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>

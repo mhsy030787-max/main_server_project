@@ -134,6 +134,11 @@
       font-size: 14px;
       text-align: center;
     }
+
+    .message.error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
   </style>
 </head>
 
@@ -175,10 +180,36 @@
     const loginForm = document.querySelector("#loginForm");
     const message = document.querySelector("#message");
 
-    loginForm.addEventListener("submit", function (event) {
+    loginForm.addEventListener("submit", async function (event) {
       event.preventDefault();
+      message.classList.remove("error");
+      message.textContent = "로그인 확인 중입니다.";
       message.style.display = "block";
-      window.location.href = "main_ui.html";
+
+      const userId = document.querySelector("#userId").value;
+      const password = document.querySelector("#password").value;
+
+      try {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ userId, password })
+        });
+        const result = await response.json();
+
+        if (!result.ok) {
+          message.classList.add("error");
+          message.textContent = result.message;
+          return;
+        }
+
+        window.location.href = "main_ui.html";
+      } catch (error) {
+        message.classList.add("error");
+        message.textContent = "서버에 연결할 수 없습니다.";
+      }
     });
   </script>
 </body>

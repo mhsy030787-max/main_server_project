@@ -5,82 +5,266 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>문서 관리</title>
   <link rel="stylesheet" href="service_common.css">
+  <style>
+    .page {
+      max-width: 1320px;
+    }
+
+    .document-manager {
+      min-height: 720px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .manager-header {
+      padding: 20px;
+      border-bottom: 1px solid #d7ecff;
+    }
+
+    .manager-header h2 {
+      margin-bottom: 6px;
+    }
+
+    .panel-note {
+      margin-bottom: 16px;
+      color: #5b7c93;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .file-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 170px auto auto;
+      gap: 10px;
+    }
+
+    .upload-strip {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.1fr) minmax(180px, 0.9fr) 150px 130px;
+      gap: 10px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #d7ecff;
+      background: #fbfdff;
+    }
+
+    .upload-drop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 46px;
+      padding: 0 12px;
+      border: 1px dashed #8db9ed;
+      border-radius: 8px;
+      background: #f4fbff;
+      color: #0753b7;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .upload-drop.drag-over {
+      border-color: #1f75d6;
+      background: #eaf8ff;
+      box-shadow: 0 0 0 3px rgba(43, 120, 208, 0.12);
+    }
+
+    .file-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .file-pick-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .upload-meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 10px;
+    }
+
+    .file-table-wrap {
+      height: 470px;
+      overflow: auto;
+      background: #ffffff;
+    }
+
+    .file-table {
+      min-width: 880px;
+    }
+
+    .file-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 0;
+      border-bottom: 1px solid #d7ecff;
+      background: #eaf8ff;
+    }
+
+    .sort-button {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 10px;
+      border: 0;
+      background: transparent;
+      color: #426b80;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .sort-button:hover {
+      color: #0753b7;
+      background: #dff4ff;
+    }
+
+    .sort-button.active {
+      color: #0753b7;
+    }
+
+    .file-table tbody tr:hover {
+      background: #f4fbff;
+    }
+
+    .file-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+    }
+
+    .file-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid #8db9ed;
+      border-radius: 6px;
+      background: #eaf8ff;
+      color: #0753b7;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .file-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      border-top: 1px solid #d7ecff;
+      background: #fbfdff;
+      color: #5b7c93;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .file-toolbar,
+      .upload-strip,
+      .upload-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .upload-drop {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 12px;
+      }
+    }
+  </style>
 </head>
-<body>
+<body data-page="documents">
   <main class="page">
     <section class="topbar">
       <div>
         <h1>문서 관리</h1>
-        <p>암호화 문서를 조회, 검색, 업로드, 삭제합니다.</p>
+        <p>파일 추가, 검색, 다운로드, 삭제를 한 창에서 처리합니다.</p>
       </div>
       <a class="back-link" href="main_ui.html">대시보드로</a>
     </section>
 
-    <section class="grid">
-      <article class="card panel">
-        <h2>문서 목록</h2>
-        <div class="toolbar">
-          <input type="search" placeholder="문서명 검색">
-          <select>
+    <section class="card panel document-manager">
+      <div class="manager-header">
+        <h2>문서 관리</h2>
+        <p class="panel-note">윈도우 파일 탐색기처럼 문서를 관리하고, 상단에서 바로 새 파일을 추가합니다.</p>
+        <div class="file-toolbar">
+          <input data-document-search type="search" placeholder="문서명 또는 소유자 검색">
+          <select data-document-grade>
             <option>전체 등급</option>
             <option>내부</option>
             <option>기밀</option>
             <option>최고기밀</option>
           </select>
-          <button class="primary-button" type="button">검색</button>
+          <button class="secondary-button" type="button" data-document-refresh>새로고침</button>
+          <button class="primary-button" type="button" data-document-select-first>문서 선택</button>
         </div>
-        <table>
+      </div>
+
+      <form class="upload-strip" data-document-form>
+        <div class="upload-drop" data-upload-drop>
+          <span data-selected-file>파일을 끌어다 놓거나 파일 추가를 누르세요</span>
+          <label class="file-pick-button" for="documentFile">파일 추가</label>
+          <input id="documentFile" class="file-input" name="file" type="file" data-document-file>
+        </div>
+
+        <div class="upload-meta">
+          <input name="name" type="text" placeholder="문서명" data-document-name required>
+          <select name="grade">
+            <option>내부</option>
+            <option>기밀</option>
+            <option>최고기밀</option>
+          </select>
+        </div>
+
+        <input name="description" type="text" placeholder="설명">
+        <button class="primary-button" type="submit">업로드 등록</button>
+      </form>
+
+      <div class="file-table-wrap">
+        <table class="file-table">
           <thead>
             <tr>
-              <th>문서명</th>
-              <th>등급</th>
-              <th>소유자</th>
-              <th>상태</th>
+              <th><button class="sort-button active" type="button" data-sort-documents="name">이름 ▲</button></th>
+              <th><button class="sort-button" type="button" data-sort-documents="grade">등급</button></th>
+              <th><button class="sort-button" type="button" data-sort-documents="owner">소유자</button></th>
+              <th><button class="sort-button" type="button" data-sort-documents="modifiedAt">수정일</button></th>
+              <th><button class="sort-button" type="button" data-sort-documents="status">상태</button></th>
+              <th>작업</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>고객정보_정산.xlsx</td>
-              <td>기밀</td>
-              <td>팀장</td>
-              <td><span class="badge">보호 중</span></td>
-            </tr>
-            <tr>
-              <td>서버접근_계정.pdf</td>
-              <td>최고기밀</td>
-              <td>관리자</td>
-              <td><span class="badge warn">승인 대기</span></td>
-            </tr>
-            <tr>
-              <td>프로젝트_계약서.docx</td>
-              <td>내부</td>
-              <td>사원</td>
-              <td><span class="badge">보호 중</span></td>
-            </tr>
+          <tbody data-documents>
           </tbody>
         </table>
-      </article>
+      </div>
 
-      <aside class="card panel">
-        <h2>문서 업로드</h2>
-        <form class="form">
-          <label>문서명
-            <input type="text" placeholder="예: 계약서.docx">
-          </label>
-          <label>보안 등급
-            <select>
-              <option>내부</option>
-              <option>기밀</option>
-              <option>최고기밀</option>
-            </select>
-          </label>
-          <label>설명
-            <textarea placeholder="문서 설명을 입력하세요"></textarea>
-          </label>
-          <button class="primary-button" type="button">업로드 등록</button>
-        </form>
-      </aside>
+      <div class="file-footer">
+        <span data-document-count>0개 항목</span>
+        <span>선택한 문서는 다운로드 로그에 기록됩니다.</span>
+      </div>
     </section>
   </main>
+  <script src="app_frontend.js"></script>
 </body>
 </html>
