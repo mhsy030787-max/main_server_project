@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사내 메일</title>
+  <link rel="stylesheet" href="service_common.css">
+  <style>
+    .page {
+      max-width: 1280px;
+    }
+
+    .mail-layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .mail-nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mail-tab {
+      min-height: 44px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .mail-tab.active {
+      background: #dff4ff;
+      border-color: #1f75d6;
+    }
+
+    .compose-tab {
+      background: #7dd3fc;
+      border-color: #7dd3fc;
+      color: #ffffff;
+    }
+
+    .compose-tab.active {
+      background: #38bdf8;
+      border-color: #1f75d6;
+      color: #ffffff;
+    }
+
+    .mail-main {
+      min-height: 640px;
+    }
+
+    .mail-view {
+      display: none;
+    }
+
+    .mail-view.active {
+      display: block;
+    }
+
+    .mail-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+    }
+
+    .mail-item {
+      padding: 14px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+      cursor: pointer;
+    }
+
+    .mail-item:hover,
+    .mail-item.active {
+      border-color: #1f75d6;
+      background: #eaf8ff;
+    }
+
+    .mail-item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .mail-meta {
+      color: #5b7c93;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .mail-detail {
+      display: grid;
+      gap: 14px;
+    }
+
+    .mail-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #d7ecff;
+    }
+
+    .mail-detail-body {
+      min-height: 300px;
+      padding: 18px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+      line-height: 1.7;
+    }
+
+    .domain-note {
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+      color: #5b7c93;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .mail-compose-form {
+      max-width: 720px;
+    }
+
+    .mail-compose-form textarea {
+      min-height: 170px;
+    }
+
+    .attachment-picker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 46px;
+      padding: 0 12px;
+      border: 1px dashed #8db9ed;
+      border-radius: 8px;
+      background: #f4fbff;
+      color: #0753b7;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .attachment-picker.drag-over {
+      border-color: #1f75d6;
+      background: #eaf8ff;
+    }
+
+    .attachment-picker input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .mail-file-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      min-width: 76px;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .attachment-name {
+      color: #0753b7;
+      font-size: 13px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1000px) {
+      .mail-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-page="mail">
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>사내 메일</h1>
+        <p>@datavault.local 내부 사용자끼리 보안 메일을 주고받습니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="mail-layout">
+      <aside class="card panel">
+        <h2>메일함</h2>
+        <nav class="mail-nav">
+          <button class="mail-tab active" type="button" data-mail-box="inbox">받은 메일함</button>
+          <button class="mail-tab" type="button" data-mail-box="sent">보낸 메일함</button>
+          <button class="mail-tab compose-tab" type="button" data-mail-compose>메일 작성</button>
+        </nav>
+      </aside>
+
+      <article class="card panel mail-main">
+        <section class="mail-view active" data-mail-list-view>
+          <h2 data-mail-title>받은 메일함</h2>
+          <ul class="mail-list" data-mail-list></ul>
+        </section>
+
+        <section class="mail-view" data-mail-detail-view>
+          <div class="mail-detail" data-mail-detail></div>
+        </section>
+
+        <section class="mail-view" data-mail-compose-view>
+          <h2>메일 작성</h2>
+          <div class="domain-note">
+            현재는 <strong>@datavault.local</strong> 내부 도메인만 발송됩니다. 외부 도메인은 차단 로그로 기록됩니다.
+          </div>
+          <form class="form mail-compose-form" data-mail-form>
+            <label>받는 사람
+              <input name="to" type="email" list="mailRecipients" placeholder="예: staff01@datavault.local" required>
+              <datalist id="mailRecipients" data-mail-recipients></datalist>
+            </label>
+            <label>제목
+              <input name="subject" type="text" placeholder="메일 제목" required>
+            </label>
+            <div class="attachment-picker" data-mail-attachment-drop>
+              <span class="attachment-name" data-mail-attachment-name>파일을 끌어다 놓거나 파일 추가를 누르세요</span>
+              <label class="mail-file-button" for="mailAttachmentFile">
+                파일 추가
+                <input id="mailAttachmentFile" name="attachmentFile" type="file" data-mail-attachment-file>
+              </label>
+            </div>
+            <label>보안 등급
+              <select name="grade">
+                <option>내부</option>
+                <option>기밀</option>
+                <option>최고기밀</option>
+              </select>
+            </label>
+            <label>본문
+              <textarea name="body" placeholder="메일 내용을 입력하세요" required></textarea>
+            </label>
+            <button class="primary-button" type="submit">메일 보내기</button>
+          </form>
+        </section>
+      </article>
+    </section>
+  </main>
+  <script src="app_frontend.js"></script>
+</body>
+</html>

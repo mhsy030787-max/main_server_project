@@ -5,6 +5,128 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>알림</title>
   <link rel="stylesheet" href="service_common.css">
+  <style>
+    .page {
+      max-width: 1280px;
+    }
+
+    .notice-layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .notice-nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .notice-tab {
+      min-height: 44px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .notice-tab.active {
+      background: #dff4ff;
+      border-color: #1f75d6;
+    }
+
+    .settings-tab {
+      margin-top: 8px;
+      background: #7dd3fc;
+      border-color: #7dd3fc;
+      color: #ffffff;
+    }
+
+    .settings-tab.active {
+      background: #38bdf8;
+      border-color: #1f75d6;
+      color: #ffffff;
+    }
+
+    .notice-main {
+      min-height: 640px;
+    }
+
+    .notice-view {
+      display: none;
+    }
+
+    .notice-view.active {
+      display: block;
+    }
+
+    .notice-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+    }
+
+    .notice-item {
+      padding: 14px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+      cursor: pointer;
+    }
+
+    .notice-item:hover,
+    .notice-item.active {
+      border-color: #1f75d6;
+      background: #eaf8ff;
+    }
+
+    .notice-item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .notice-meta {
+      color: #5b7c93;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .notice-detail {
+      display: grid;
+      gap: 14px;
+    }
+
+    .notice-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #d7ecff;
+    }
+
+    .notice-detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .notice-detail-body {
+      min-height: 300px;
+      padding: 18px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1000px) {
+      .notice-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body data-page="alerts">
   <main class="page">
@@ -16,33 +138,50 @@
       <a class="back-link" href="main_ui.html">대시보드로</a>
     </section>
 
-    <section class="grid">
-      <article class="card panel">
-        <h2>알림 목록</h2>
-        <ul class="list" data-alerts>
-        </ul>
-      </article>
-
+    <section class="notice-layout">
       <aside class="card panel">
-        <h2>알림 설정</h2>
-        <form class="form" data-notice-form>
-          <label>알림 대상
-            <select name="target">
-              <option>관리자</option>
-              <option>팀장</option>
-              <option>전체 사용자</option>
-            </select>
-          </label>
-          <label>알림 종류
-            <select name="type">
-              <option>보안 이벤트</option>
-              <option>승인 요청</option>
-              <option>시스템 공지</option>
-            </select>
-          </label>
-          <button class="primary-button" type="button">설정 저장</button>
-        </form>
+        <h2>알림함</h2>
+        <nav class="notice-nav">
+          <button class="notice-tab active" type="button" data-alert-filter="전체">전체 알림</button>
+          <button class="notice-tab" type="button" data-alert-filter="읽지 않음">읽지 않음</button>
+          <button class="notice-tab" type="button" data-alert-filter="승인 요청">승인 요청</button>
+          <button class="notice-tab" type="button" data-alert-filter="보안 이벤트">보안 이벤트</button>
+          <button class="notice-tab" type="button" data-alert-filter="시스템 공지">시스템 공지</button>
+          <button class="notice-tab settings-tab" type="button" data-alert-settings>알림 설정</button>
+        </nav>
       </aside>
+
+      <article class="card panel notice-main">
+        <section class="notice-view active" data-alert-list-view>
+          <h2 data-alert-title>전체 알림</h2>
+          <ul class="notice-list" data-alerts></ul>
+        </section>
+
+        <section class="notice-view" data-alert-detail-view>
+          <div class="notice-detail" data-alert-detail></div>
+        </section>
+
+        <section class="notice-view" data-alert-settings-view>
+          <h2>알림 설정</h2>
+          <form class="form" data-notice-form>
+            <label>알림 대상
+              <select name="target">
+                <option>관리자</option>
+                <option>팀장</option>
+                <option>전체 사용자</option>
+              </select>
+            </label>
+            <label>알림 종류
+              <select name="type">
+                <option>보안 이벤트</option>
+                <option>승인 요청</option>
+                <option>시스템 공지</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">설정 저장</button>
+          </form>
+        </section>
+      </article>
     </section>
   </main>
   <script src="app_frontend.js"></script>

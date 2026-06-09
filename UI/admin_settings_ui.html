@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리 설정</title>
+  <link rel="stylesheet" href="service_common.css">
+  <style>
+    .page {
+      max-width: 1280px;
+    }
+
+    .settings-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tab-button {
+      min-height: 48px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab-button.active {
+      background: #dff4ff;
+      border-color: #1f75d6;
+    }
+
+    .settings-section {
+      display: none;
+    }
+
+    .settings-section.active {
+      display: block;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) 340px;
+      gap: 18px;
+    }
+
+    @media (max-width: 900px) {
+      .settings-tabs,
+      .settings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-page="admin-settings">
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>관리 설정</h1>
+        <p>사용자, 권한, 문서 등급을 한 곳에서 관리합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <nav class="settings-tabs" aria-label="관리 설정 탭">
+      <button class="tab-button active" type="button" data-settings-tab="users">사용자 관리</button>
+      <button class="tab-button" type="button" data-settings-tab="permissions">권한 관리</button>
+      <button class="tab-button" type="button" data-settings-tab="grades">등급 관리</button>
+    </nav>
+
+    <section class="settings-section active" data-settings-section="users">
+      <div class="settings-grid">
+        <article class="card panel">
+          <h2>사용자 목록</h2>
+          <div class="toolbar">
+            <input data-user-search type="search" placeholder="이름 또는 아이디 검색">
+            <select data-user-role>
+              <option>전체 역할</option>
+              <option>사원</option>
+              <option>팀장</option>
+              <option>관리자</option>
+            </select>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>아이디</th>
+                <th>역할</th>
+                <th>상태</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody data-users></tbody>
+          </table>
+        </article>
+
+        <aside class="card panel">
+          <h2>사용자 등록</h2>
+          <form class="form" data-user-form>
+            <label>이름
+              <input name="name" type="text" placeholder="이름" required>
+            </label>
+            <label>아이디
+              <input name="userId" type="text" placeholder="로그인 아이디" required>
+            </label>
+            <label>역할
+              <select name="role">
+                <option>사원</option>
+                <option>팀장</option>
+                <option>관리자</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">사용자 추가</button>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <section class="settings-section" data-settings-section="permissions">
+      <div class="settings-grid">
+        <article class="card panel">
+          <h2>역할별 권한</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>역할</th>
+                <th>조회</th>
+                <th>업로드</th>
+                <th>다운로드</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody data-permissions></tbody>
+          </table>
+        </article>
+
+        <aside class="card panel">
+          <h2>권한 설정</h2>
+          <form class="form" data-permission-form>
+            <label>역할
+              <select name="role">
+                <option>사원</option>
+                <option>팀장</option>
+                <option>관리자</option>
+              </select>
+            </label>
+            <label>대상 문서 등급
+              <select name="grade">
+                <option>내부</option>
+                <option>기밀</option>
+                <option>최고기밀</option>
+              </select>
+            </label>
+            <label>접근 정책
+              <select name="policy">
+                <option>조회만 허용</option>
+                <option>다운로드 허용</option>
+                <option>승인 후 다운로드</option>
+                <option>접근 차단</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">정책 저장</button>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <section class="settings-section" data-settings-section="grades">
+      <div class="settings-grid">
+        <article class="card panel">
+          <h2>보안 등급</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>등급</th>
+                <th>설명</th>
+                <th>다운로드 정책</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody data-grades></tbody>
+          </table>
+        </article>
+
+        <aside class="card panel">
+          <h2>등급 정책 추가</h2>
+          <form class="form" data-grade-form>
+            <label>등급명
+              <input name="name" type="text" placeholder="예: 대외비" required>
+            </label>
+            <label>다운로드 정책
+              <select name="policy">
+                <option>권한 내 허용</option>
+                <option>승인 후 허용</option>
+                <option>다운로드 차단</option>
+              </select>
+            </label>
+            <label>설명
+              <textarea name="description" placeholder="등급 설명을 입력하세요"></textarea>
+            </label>
+            <button class="primary-button" type="submit">등급 저장</button>
+          </form>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <script src="app_frontend.js"></script>
+</body>
+</html>

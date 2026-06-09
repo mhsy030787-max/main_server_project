@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일정 관리</title>
+  <link rel="stylesheet" href="service_common.css">
+  <style>
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .calendar-header h2 {
+      margin-bottom: 0;
+    }
+
+    .calendar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .calendar-month-input {
+      width: 150px;
+      min-height: 34px;
+      padding: 0 30px 0 10px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #fbfdff;
+      color: #0753b7;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .calendar-nav-button {
+      min-width: 34px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid #8db9ed;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #0753b7;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .calendar-nav-button:hover {
+      border-color: #1f75d6;
+      background: #eaf8ff;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .calendar-weekday,
+    .calendar-day {
+      min-height: 92px;
+      padding: 10px;
+      border-right: 1px solid #d7ecff;
+      border-bottom: 1px solid #d7ecff;
+      background: #ffffff;
+    }
+
+    .calendar-weekday {
+      min-height: 42px;
+      background: #eaf8ff;
+      color: #426b80;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .calendar-day:nth-child(7n),
+    .calendar-weekday:nth-child(7n) {
+      border-right: 0;
+    }
+
+    .calendar-day.muted {
+      background: #f8fbfd;
+      color: #9aaebe;
+    }
+
+    .calendar-day.today {
+      background: #f0fbff;
+      box-shadow: inset 0 0 0 2px #38bdf8;
+    }
+
+    .day-number {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .schedule-chip {
+      display: block;
+      margin-top: 6px;
+      padding: 5px 7px;
+      border-radius: 6px;
+      background: #dff4ff;
+      color: #0753b7;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .schedule-sections {
+      display: grid;
+      gap: 12px;
+    }
+
+    .schedule-section {
+      overflow: hidden;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #fbfdff;
+    }
+
+    .schedule-section-title {
+      padding: 10px 14px;
+      background: #eaf8ff;
+      color: #0753b7;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .schedule-section.company .schedule-section-title {
+      background: #72a7dc;
+      color: #ffffff;
+    }
+
+    .schedule-section.team .schedule-section-title {
+      background: #d8e6f6;
+      color: #10213d;
+    }
+
+    .schedule-section.personal .schedule-section-title {
+      background: #eef4fb;
+      color: #10213d;
+    }
+
+    .schedule-section-list {
+      display: grid;
+      gap: 0;
+      margin: 0;
+      padding: 10px 14px 12px 34px;
+    }
+
+    .schedule-section-item,
+    .schedule-empty {
+      padding: 6px 0;
+      color: #516b84;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .schedule-section-item strong {
+      display: block;
+      color: #10213d;
+      font-size: 14px;
+    }
+
+    .schedule-section-item span {
+      display: block;
+      margin-top: 2px;
+      color: #6a839c;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .schedule-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body data-page="schedule">
+  <main class="page">
+    <section class="topbar">
+      <div>
+        <h1>일정 관리</h1>
+        <p>문서 승인, 보안 점검, 백업 일정을 캘린더로 확인합니다.</p>
+      </div>
+      <a class="back-link" href="main_ui.html">대시보드로</a>
+    </section>
+
+    <section class="schedule-grid">
+      <article class="card panel">
+        <div class="calendar-header">
+          <h2 data-calendar-title>월간 일정</h2>
+          <div class="calendar-controls">
+            <button class="calendar-nav-button" type="button" data-calendar-prev>‹</button>
+            <input class="calendar-month-input" type="month" data-calendar-month>
+            <button class="calendar-nav-button" type="button" data-calendar-next>›</button>
+            <button class="calendar-nav-button" type="button" data-calendar-today>오늘</button>
+          </div>
+        </div>
+        <div class="calendar" data-calendar></div>
+      </article>
+
+      <aside class="card panel">
+        <h2>오늘 일정</h2>
+        <div class="schedule-sections" data-schedule-list></div>
+      </aside>
+    </section>
+  </main>
+  <script src="app_frontend.js"></script>
+</body>
+</html>
