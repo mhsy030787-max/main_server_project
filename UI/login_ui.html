@@ -380,6 +380,7 @@
         if (!result.ok) {
           message.classList.add("error");
           message.textContent = result.message;
+          message.style.display = "block";
           return;
         }
 
@@ -387,6 +388,7 @@
       } catch (error) {
         message.classList.add("error");
         message.textContent = "서버에 연결할 수 없습니다.";
+        message.style.display = "block";
       } finally {
         loginForm.querySelector("button").disabled = false;
       }
