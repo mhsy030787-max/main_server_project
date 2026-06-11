@@ -187,9 +187,24 @@ const App = (() => {
 
   async function requireLogin() {
     try {
-      const response = await fetch("/api/me");
+      let accessToken = localStorage.getItem("accessToken");
+      let response = await fetch("/api/me", {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      });
+      if (response.status === 401) {
+        const refreshResponse = await fetch("/api/refresh", { method: "POST" });
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.ok) {
+          localStorage.setItem("accessToken", refreshResult.accessToken);
+          accessToken = refreshResult.accessToken;
+          response = await fetch("/api/me", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+        }
+      }
       const result = await response.json();
       if (!result.ok) {
+        localStorage.removeItem("accessToken");
         location.href = "login_ui.html";
         return null;
       }

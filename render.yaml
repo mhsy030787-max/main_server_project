@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: main-server-project
+    env: python
+    buildCommand: ""
+    startCommand: HOST=0.0.0.0 python3 backend/app.py
+    plan: free

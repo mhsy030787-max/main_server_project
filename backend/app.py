@@ -4,8 +4,10 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 from pathlib import Path
 from secrets import token_bytes, token_urlsafe
+import time
 from urllib.parse import unquote
 
 
@@ -13,6 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 UI_DIR = BASE_DIR / "UI"
 
 SESSIONS = {}
+JWT_SECRET = token_bytes(32)
+ACCESS_TOKEN_SECONDS = 15 * 60
+REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60
 
 
 def hash_password(password, salt=None):
@@ -51,6 +56,79 @@ def json_bytes(data):
     return json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
+def b64url_encode(value):
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def b64url_decode(value):
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(value + padding)
+
+
+def make_jwt(payload):
+    header = {"alg": "HS256", "typ": "JWT"}
+    encoded_header = b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    encoded_payload = b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
+    signature = hmac.new(JWT_SECRET, signing_input, hashlib.sha256).digest()
+    return f"{encoded_header}.{encoded_payload}.{b64url_encode(signature)}"
+
+
+def verify_jwt(token):
+    try:
+        encoded_header, encoded_payload, encoded_signature = token.split(".")
+        signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
+        expected_signature = hmac.new(JWT_SECRET, signing_input, hashlib.sha256).digest()
+        actual_signature = b64url_decode(encoded_signature)
+        if not hmac.compare_digest(actual_signature, expected_signature):
+            return None
+        payload = json.loads(b64url_decode(encoded_payload).decode("utf-8"))
+        if payload.get("exp", 0) < int(time.time()):
+            return None
+        return payload
+    except (ValueError, json.JSONDecodeError, KeyError):
+        return None
+
+
+def public_user(user):
+    return {
+        "id": user["id"],
+        "name": user["name"],
+        "role": user["role"],
+    }
+
+
+def hash_token(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def make_access_token(user, session_id):
+    now = int(time.time())
+    return make_jwt({
+        "sub": user["id"],
+        "name": user["name"],
+        "role": user["role"],
+        "sid": session_id,
+        "iat": now,
+        "exp": now + ACCESS_TOKEN_SECONDS,
+    })
+
+
+def make_refresh_token():
+    return token_urlsafe(48)
+
+
+def make_auth_payload(user, session_id):
+    return {
+        "ok": True,
+        "message": "로그인 성공",
+        "user": public_user(user),
+        "accessToken": make_access_token(user, session_id),
+        "tokenType": "Bearer",
+        "expiresIn": ACCESS_TOKEN_SECONDS,
+    }
+
+
 def get_cookie(headers, name):
     cookie_header = headers.get("Cookie", "")
     for item in cookie_header.split(";"):
@@ -58,6 +136,17 @@ def get_cookie(headers, name):
         if key == name:
             return value
     return None
+
+
+def auth_cookie(refresh_token):
+    return (
+        f"refresh_token={refresh_token}; Path=/; HttpOnly; SameSite=Lax; "
+        f"Max-Age={REFRESH_TOKEN_SECONDS}"
+    )
+
+
+def clear_refresh_cookie():
+    return "refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -85,6 +174,30 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "user": user})
             return
 
+        if self.path == "/api/sessions":
+            user = self.current_user()
+            if not user:
+                self.send_json({"ok": False, "message": "로그인이 필요합니다."}, HTTPStatus.UNAUTHORIZED)
+                return
+
+            self.send_json({
+                "ok": True,
+                "sessions": [
+                    {
+                        "sessionId": session_id,
+                        "userId": session["user"]["id"],
+                        "name": session["user"]["name"],
+                        "role": session["user"]["role"],
+                        "createdAt": session["createdAt"],
+                        "expiresAt": session["refreshExpiresAt"],
+                        "active": not session.get("revoked", False),
+                    }
+                    for session_id, session in SESSIONS.items()
+                    if session["user"]["id"] == user["id"]
+                ],
+            })
+            return
+
         self.send_json({"ok": False, "message": "없는 API입니다."}, HTTPStatus.NOT_FOUND)
 
     def handle_api_post(self):
@@ -101,15 +214,47 @@ class AppHandler(BaseHTTPRequestHandler):
                 )
                 return
 
-            session_id = token_urlsafe(32)
+            session_id = token_urlsafe(24)
+            refresh_token = make_refresh_token()
+            now = int(time.time())
             SESSIONS[session_id] = {
-                "id": user["id"],
-                "name": user["name"],
-                "role": user["role"],
+                "user": public_user(user),
+                "refreshHash": hash_token(refresh_token),
+                "createdAt": now,
+                "refreshExpiresAt": now + REFRESH_TOKEN_SECONDS,
+                "revoked": False,
             }
             self.send_json(
-                {"ok": True, "message": "로그인 성공", "user": SESSIONS[session_id]},
-                headers={"Set-Cookie": f"session_id={session_id}; Path=/; HttpOnly; SameSite=Lax"},
+                make_auth_payload(user, session_id),
+                headers={"Set-Cookie": auth_cookie(refresh_token)},
+            )
+            return
+
+        if self.path == "/api/refresh":
+            session = self.current_session_from_refresh()
+            if not session:
+                self.send_json(
+                    {"ok": False, "message": "다시 로그인이 필요합니다."},
+                    HTTPStatus.UNAUTHORIZED,
+                    headers={"Set-Cookie": clear_refresh_cookie()},
+                )
+                return
+
+            session_id, session_data = session
+            user = session_data["user"]
+            new_refresh_token = make_refresh_token()
+            session_data["refreshHash"] = hash_token(new_refresh_token)
+            session_data["refreshExpiresAt"] = int(time.time()) + REFRESH_TOKEN_SECONDS
+            self.send_json(
+                {
+                    "ok": True,
+                    "message": "토큰이 갱신되었습니다.",
+                    "user": user,
+                    "accessToken": make_access_token(user, session_id),
+                    "tokenType": "Bearer",
+                    "expiresIn": ACCESS_TOKEN_SECONDS,
+                },
+                headers={"Set-Cookie": auth_cookie(new_refresh_token)},
             )
             return
 
@@ -139,24 +284,82 @@ class AppHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/api/logout":
-            session_id = get_cookie(self.headers, "session_id")
+            session_id = self.current_session_id()
             if session_id:
                 SESSIONS.pop(session_id, None)
 
             self.send_json(
                 {"ok": True, "message": "로그아웃 되었습니다."},
-                headers={"Set-Cookie": "session_id=; Path=/; Max-Age=0; SameSite=Lax"},
+                headers={"Set-Cookie": clear_refresh_cookie()},
             )
+            return
+
+        if self.path == "/api/sessions/revoke":
+            user = self.current_user()
+            if not user:
+                self.send_json({"ok": False, "message": "로그인이 필요합니다."}, HTTPStatus.UNAUTHORIZED)
+                return
+
+            body = self.read_json_body()
+            target_session_id = body.get("sessionId", "")
+            session = SESSIONS.get(target_session_id)
+            if not session or session["user"]["id"] != user["id"]:
+                self.send_json({"ok": False, "message": "세션을 찾을 수 없습니다."}, HTTPStatus.NOT_FOUND)
+                return
+
+            SESSIONS.pop(target_session_id, None)
+            self.send_json({"ok": True, "message": "세션을 종료했습니다."})
             return
 
         self.send_json({"ok": False, "message": "없는 API입니다."}, HTTPStatus.NOT_FOUND)
 
     def current_user(self):
-        session_id = get_cookie(self.headers, "session_id")
+        session_id = self.current_session_id()
         if not session_id:
             return None
 
-        return SESSIONS.get(session_id)
+        session = SESSIONS.get(session_id)
+        if not session or session.get("revoked"):
+            return None
+
+        return session["user"]
+
+    def current_session_id(self):
+        auth_header = self.headers.get("Authorization", "")
+        auth_type, _, token = auth_header.partition(" ")
+        if auth_type.lower() != "bearer" or not token:
+            return None
+
+        payload = verify_jwt(token)
+        if not payload:
+            return None
+
+        session_id = payload.get("sid")
+        session = SESSIONS.get(session_id)
+        if not session or session.get("revoked"):
+            return None
+
+        if session["user"]["id"] != payload.get("sub"):
+            return None
+
+        return session_id
+
+    def current_session_from_refresh(self):
+        refresh_token = get_cookie(self.headers, "refresh_token")
+        if not refresh_token:
+            return None
+
+        refresh_hash = hash_token(refresh_token)
+        now = int(time.time())
+        for session_id, session in list(SESSIONS.items()):
+            if session.get("refreshExpiresAt", 0) < now:
+                SESSIONS.pop(session_id, None)
+                continue
+            if session.get("revoked"):
+                continue
+            if hmac.compare_digest(session.get("refreshHash", ""), refresh_hash):
+                return session_id, session
+        return None
 
     def read_json_body(self):
         content_length = int(self.headers.get("Content-Length", 0))
@@ -214,8 +417,10 @@ class AppHandler(BaseHTTPRequestHandler):
 
 
 def run():
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), AppHandler)
-    print("Python server running: http://127.0.0.1:8000")
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8000"))
+    server = ThreadingHTTPServer((host, port), AppHandler)
+    print(f"Python server running: http://{host}:{port}")
     print("Login test accounts: admin / 1234, leader / 1234, staff / 1234")
     server.serve_forever()
 

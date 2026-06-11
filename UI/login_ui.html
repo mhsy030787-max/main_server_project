@@ -360,6 +360,7 @@
           return;
         }
 
+        localStorage.setItem("accessToken", result.accessToken);
         window.location.href = "main_ui.html";
       } catch (error) {
         message.classList.add("error");
