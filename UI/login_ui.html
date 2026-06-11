@@ -71,13 +71,34 @@
       padding: 44px;
       overflow: hidden;
       background:
-        linear-gradient(135deg, rgba(16, 35, 63, 0.74), rgba(49, 111, 155, 0.62)),
-        url("assets/login-visual.png") center center / cover no-repeat;
+        linear-gradient(135deg, rgba(16, 35, 63, 0.92), rgba(49, 111, 155, 0.9)),
+        linear-gradient(180deg, #dff4ff, #ffffff);
       color: #ffffff;
     }
 
-    .visual-image {
-      display: none;
+    .visual-panel::before {
+      content: "";
+      position: absolute;
+      right: 46px;
+      bottom: 82px;
+      width: 190px;
+      height: 120px;
+      border: 10px solid rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #eaf8ff, #7dd3fc);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
+    }
+
+    .visual-panel::after {
+      content: "";
+      position: absolute;
+      right: 92px;
+      bottom: 46px;
+      width: 100px;
+      height: 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 0 -28px 0 rgba(255, 255, 255, 0.5);
     }
 
     .visual-copy {
@@ -262,6 +283,10 @@
         padding: 30px;
       }
 
+      .visual-panel::before,
+      .visual-panel::after {
+        opacity: 0.45;
+      }
 
       .login-panel {
         padding: 30px;
@@ -290,7 +315,6 @@
           <li>내부 메일망 연동</li>
           <li>접근 기록 모니터링</li>
         </ul>
-        <img class="visual-image" src="assets/login-visual.png" alt="">
       </div>
 
       <div class="login-panel">
