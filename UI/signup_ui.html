@@ -353,6 +353,9 @@
   <script>
     const signupForm = document.querySelector("#signupForm");
     const message = document.querySelector("#message");
+    const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
+      ? "http://127.0.0.1:8000"
+      : "";
 
     function showMessage(text, isError) {
       message.textContent = text;
@@ -379,8 +382,9 @@
 
       try {
         signupForm.querySelector("button").disabled = true;
-        const response = await fetch("/api/register", {
+        const response = await fetch(`${API_BASE}/api/register`, {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json"
           },

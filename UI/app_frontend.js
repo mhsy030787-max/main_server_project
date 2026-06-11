@@ -1,5 +1,8 @@
 const App = (() => {
   const STORAGE_KEY = "assetPlatformState";
+  const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
+    ? "http://127.0.0.1:8000"
+    : "";
 
   const seed = {
     profile: {
@@ -185,19 +188,28 @@ const App = (() => {
     setTimeout(() => toast.classList.remove("show"), 1800);
   }
 
+  function apiPath(path) {
+    return `${API_BASE}${path}`;
+  }
+
   async function requireLogin() {
     try {
       let accessToken = localStorage.getItem("accessToken");
-      let response = await fetch("/api/me", {
+      let response = await fetch(apiPath("/api/me"), {
+        credentials: "include",
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
       if (response.status === 401) {
-        const refreshResponse = await fetch("/api/refresh", { method: "POST" });
+        const refreshResponse = await fetch(apiPath("/api/refresh"), {
+          method: "POST",
+          credentials: "include",
+        });
         const refreshResult = await refreshResponse.json();
         if (refreshResult.ok) {
           localStorage.setItem("accessToken", refreshResult.accessToken);
           accessToken = refreshResult.accessToken;
-          response = await fetch("/api/me", {
+          response = await fetch(apiPath("/api/me"), {
+            credentials: "include",
             headers: { Authorization: `Bearer ${accessToken}` },
           });
         }

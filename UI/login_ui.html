@@ -356,6 +356,9 @@
   <script>
     const loginForm = document.querySelector("#loginForm");
     const message = document.querySelector("#message");
+    const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
+      ? "http://127.0.0.1:8000"
+      : "";
 
     loginForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -368,8 +371,9 @@
 
       try {
         loginForm.querySelector("button").disabled = true;
-        const response = await fetch("/api/login", {
+        const response = await fetch(`${API_BASE}/api/login`, {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json"
           },

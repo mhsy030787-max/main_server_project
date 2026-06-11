@@ -19,6 +19,25 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parent.parent
 UI_DIR = BASE_DIR / "UI"
 
+
+def load_local_env(env_path):
+    if not env_path.is_file():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_local_env(BASE_DIR / ".env")
+
 SESSIONS = {}
 JWT_SECRET = token_bytes(32)
 ACCESS_TOKEN_SECONDS = 15 * 60
@@ -306,6 +325,26 @@ def clear_refresh_cookie():
 
 
 class AppHandler(BaseHTTPRequestHandler):
+    def end_headers(self):
+        origin = self.headers.get("Origin")
+        allowed_origins = {
+            "http://127.0.0.1:5500",
+            "http://localhost:5500",
+            "http://127.0.0.1:5501",
+            "http://localhost:5501",
+        }
+        if origin in allowed_origins:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.end_headers()
+
     def do_GET(self):
         if self.path.startswith("/api/"):
             self.handle_api_get()
