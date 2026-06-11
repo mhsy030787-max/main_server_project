@@ -8,7 +8,12 @@ import os
 from pathlib import Path
 from secrets import token_bytes, token_urlsafe
 import time
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
+
+try:
+    import pymysql
+except ImportError:
+    pymysql = None
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,11 +50,162 @@ def make_user(user_id, password, name, role):
     }
 
 
-USERS = {
+DEFAULT_USERS = {
     "admin": make_user("admin", "1234", "관리자", "관리자"),
     "leader": make_user("leader", "1234", "팀장", "팀장"),
     "staff": make_user("staff", "1234", "사원", "사원"),
 }
+
+
+class MemoryUserStore:
+    def __init__(self):
+        self.users = dict(DEFAULT_USERS)
+
+    def get_user(self, user_id):
+        return self.users.get(user_id)
+
+    def user_exists(self, user_id):
+        return user_id in self.users
+
+    def create_user(self, user_id, password, name, role):
+        self.users[user_id] = make_user(user_id, password, name, role)
+
+
+class MySQLUserStore:
+    def __init__(self, config):
+        if pymysql is None:
+            raise RuntimeError("PyMySQL이 설치되어 있지 않습니다.")
+        self.config = config
+        self.ensure_schema()
+        self.seed_default_users()
+
+    def connect(self):
+        return pymysql.connect(
+            **self.config,
+            charset="utf8mb4",
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True,
+        )
+
+    def ensure_schema(self):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS users (
+                        user_id VARCHAR(64) PRIMARY KEY,
+                        name VARCHAR(80) NOT NULL,
+                        role VARCHAR(30) NOT NULL,
+                        password_salt VARCHAR(128) NOT NULL,
+                        password_hash VARCHAR(128) NOT NULL,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP
+                    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+                    """
+                )
+
+    def seed_default_users(self):
+        for user in DEFAULT_USERS.values():
+            if not self.user_exists(user["id"]):
+                self.insert_user(user)
+
+    def row_to_user(self, row):
+        if not row:
+            return None
+        return {
+            "id": row["user_id"],
+            "name": row["name"],
+            "role": row["role"],
+            "password": {
+                "salt": row["password_salt"],
+                "hash": row["password_hash"],
+            },
+        }
+
+    def get_user(self, user_id):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT user_id, name, role, password_salt, password_hash
+                    FROM users
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                return self.row_to_user(cursor.fetchone())
+
+    def user_exists(self, user_id):
+        return self.get_user(user_id) is not None
+
+    def create_user(self, user_id, password, name, role):
+        self.insert_user(make_user(user_id, password, name, role))
+
+    def insert_user(self, user):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO users
+                        (user_id, name, role, password_salt, password_hash)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        user["id"],
+                        user["name"],
+                        user["role"],
+                        user["password"]["salt"],
+                        user["password"]["hash"],
+                    ),
+                )
+
+
+def mysql_config_from_env():
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url.startswith(("mysql://", "mysql+pymysql://")):
+        parsed = urlparse(database_url.replace("mysql+pymysql://", "mysql://", 1))
+        return {
+            "host": parsed.hostname,
+            "port": parsed.port or 3306,
+            "user": unquote(parsed.username or ""),
+            "password": unquote(parsed.password or ""),
+            "database": parsed.path.lstrip("/"),
+        }
+
+    host = os.environ.get("MYSQL_HOST") or os.environ.get("MYSQLHOST")
+    database = os.environ.get("MYSQL_DATABASE") or os.environ.get("MYSQLDATABASE")
+    user = os.environ.get("MYSQL_USER") or os.environ.get("MYSQLUSER")
+    password = os.environ.get("MYSQL_PASSWORD") or os.environ.get("MYSQLPASSWORD")
+    port = os.environ.get("MYSQL_PORT") or os.environ.get("MYSQLPORT") or "3306"
+
+    if not all([host, database, user]):
+        return None
+
+    return {
+        "host": host,
+        "port": int(port),
+        "user": user,
+        "password": password or "",
+        "database": database,
+    }
+
+
+def create_user_store():
+    config = mysql_config_from_env()
+    if not config:
+        print("MySQL 설정이 없어 메모리 사용자 저장소를 사용합니다.")
+        return MemoryUserStore()
+
+    try:
+        print("MySQL 사용자 저장소를 사용합니다.")
+        return MySQLUserStore(config)
+    except Exception as error:
+        print(f"MySQL 연결 실패로 메모리 사용자 저장소를 사용합니다: {error}")
+        return MemoryUserStore()
+
+
+USER_STORE = create_user_store()
 
 
 def json_bytes(data):
@@ -205,7 +361,7 @@ class AppHandler(BaseHTTPRequestHandler):
             body = self.read_json_body()
             user_id = body.get("userId", "")
             password = body.get("password", "")
-            user = USERS.get(user_id)
+            user = USER_STORE.get_user(user_id)
 
             if not user or not verify_password(password, user["password"]):
                 self.send_json(
@@ -272,14 +428,14 @@ class AppHandler(BaseHTTPRequestHandler):
                 )
                 return
 
-            if user_id in USERS:
+            if USER_STORE.user_exists(user_id):
                 self.send_json(
                     {"ok": False, "message": "이미 존재하는 아이디입니다."},
                     HTTPStatus.CONFLICT,
                 )
                 return
 
-            USERS[user_id] = make_user(user_id, password, name, role)
+            USER_STORE.create_user(user_id, password, name, role)
             self.send_json({"ok": True, "message": "회원가입이 완료되었습니다."}, HTTPStatus.CREATED)
             return
 

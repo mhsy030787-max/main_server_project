@@ -2,6 +2,6 @@ services:
   - type: web
     name: main-server-project
     env: python
-    buildCommand: ""
+    buildCommand: pip install -r requirements.txt
     startCommand: HOST=0.0.0.0 python3 backend/app.py
     plan: free
