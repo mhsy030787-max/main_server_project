@@ -77,6 +77,8 @@ DEFAULT_USERS = {
 
 
 class MemoryUserStore:
+    storage_type = "memory"
+
     def __init__(self):
         self.users = dict(DEFAULT_USERS)
 
@@ -91,6 +93,8 @@ class MemoryUserStore:
 
 
 class MySQLUserStore:
+    storage_type = "mysql"
+
     def __init__(self, config):
         if pymysql is None:
             raise RuntimeError("PyMySQL이 설치되어 있지 않습니다.")
@@ -360,6 +364,14 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def handle_api_get(self):
+        if self.path == "/api/health":
+            self.send_json({
+                "ok": True,
+                "storage": USER_STORE.storage_type,
+                "mysqlConfigured": mysql_config_from_env() is not None,
+            })
+            return
+
         if self.path == "/api/me":
             user = self.current_user()
             if not user:
