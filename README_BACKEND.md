@@ -83,4 +83,36 @@ Start Command:
 HOST=0.0.0.0 python3 backend/app.py
 ```
 
+Render에서 회원가입 정보를 MySQL에 저장하려면 Render 대시보드의 Environment에 외부 MySQL 접속 정보를 넣어야 합니다. Render 서버는 내 Mac의 `127.0.0.1` MySQL에 접근할 수 없으므로, Aiven, Railway, AWS RDS, Oracle Cloud, 개인 VPS MySQL처럼 외부에서 접속 가능한 MySQL 주소가 필요합니다.
+
+환경변수는 `DATABASE_URL` 하나로 넣거나, MySQL 항목을 나누어 넣을 수 있습니다.
+
+```text
+DATABASE_URL=mysql://사용자:비밀번호@외부_MySQL_주소:3306/main_server_project
+```
+
+또는:
+
+```text
+MYSQL_HOST=외부_MySQL_주소
+MYSQL_PORT=3306
+MYSQL_DATABASE=main_server_project
+MYSQL_USER=DB_사용자
+MYSQL_PASSWORD=DB_비밀번호
+```
+
+배포 후 아래 주소에서 저장소 연결 상태를 확인합니다.
+
+```text
+https://main-server-project.onrender.com/api/health
+```
+
+정상 연결이면 다음처럼 나와야 합니다.
+
+```json
+{"ok": true, "storage": "mysql", "mysqlConfigured": true}
+```
+
+`storage`가 `memory`라면 Render에 MySQL 환경변수가 없거나, 접속 정보가 틀린 상태입니다.
+
 문서, 권한, 사용자, 등급, 로그, 알림, 파일 전송 화면은 현재 프론트엔드 로컬 상태로 동작합니다.

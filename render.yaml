@@ -5,3 +5,16 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: HOST=0.0.0.0 python3 backend/app.py
     plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
