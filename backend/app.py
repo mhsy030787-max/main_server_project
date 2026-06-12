@@ -384,7 +384,6 @@ class AppHandler(BaseHTTPRequestHandler):
                 "ok": True,
                 "storage": USER_STORE.storage_type,
                 "mysqlConfigured": mysql_config_from_env() is not None,
-                "mysqlError": MYSQL_CONNECTION_ERROR,
             })
             return
 
