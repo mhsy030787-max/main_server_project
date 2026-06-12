@@ -99,7 +99,10 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=main_server_project
 MYSQL_USER=DB_사용자
 MYSQL_PASSWORD=DB_비밀번호
+MYSQL_SSL_MODE=REQUIRED
 ```
+
+`MYSQL_SSL_MODE=REQUIRED`는 Aiven처럼 SSL 접속을 요구하는 MySQL 서비스에서 사용합니다.
 
 배포 후 아래 주소에서 저장소 연결 상태를 확인합니다.
 

@@ -188,30 +188,37 @@ def mysql_config_from_env():
     database_url = os.environ.get("DATABASE_URL", "")
     if database_url.startswith(("mysql://", "mysql+pymysql://")):
         parsed = urlparse(database_url.replace("mysql+pymysql://", "mysql://", 1))
-        return {
+        config = {
             "host": parsed.hostname,
             "port": parsed.port or 3306,
             "user": unquote(parsed.username or ""),
             "password": unquote(parsed.password or ""),
             "database": parsed.path.lstrip("/"),
         }
+        if "SSL-MODE=REQUIRED" in parsed.query.upper() or parsed.hostname and "aivencloud.com" in parsed.hostname:
+            config["ssl"] = {}
+        return config
 
     host = os.environ.get("MYSQL_HOST") or os.environ.get("MYSQLHOST")
     database = os.environ.get("MYSQL_DATABASE") or os.environ.get("MYSQLDATABASE")
     user = os.environ.get("MYSQL_USER") or os.environ.get("MYSQLUSER")
     password = os.environ.get("MYSQL_PASSWORD") or os.environ.get("MYSQLPASSWORD")
     port = os.environ.get("MYSQL_PORT") or os.environ.get("MYSQLPORT") or "3306"
+    ssl_mode = (os.environ.get("MYSQL_SSL_MODE") or "").upper()
 
     if not all([host, database, user]):
         return None
 
-    return {
+    config = {
         "host": host,
         "port": int(port),
         "user": user,
         "password": password or "",
         "database": database,
     }
+    if ssl_mode == "REQUIRED" or "aivencloud.com" in host:
+        config["ssl"] = {}
+    return config
 
 
 def create_user_store():

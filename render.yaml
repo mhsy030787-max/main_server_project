@@ -18,3 +18,5 @@ services:
         sync: false
       - key: MYSQL_PASSWORD
         sync: false
+      - key: MYSQL_SSL_MODE
+        sync: false
