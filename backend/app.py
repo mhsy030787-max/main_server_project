@@ -221,17 +221,25 @@ def mysql_config_from_env():
     return config
 
 
+MYSQL_CONNECTION_ERROR = None
+
+
 def create_user_store():
+    global MYSQL_CONNECTION_ERROR
     config = mysql_config_from_env()
     if not config:
+        MYSQL_CONNECTION_ERROR = None
         print("MySQL 설정이 없어 메모리 사용자 저장소를 사용합니다.")
         return MemoryUserStore()
 
     try:
         print("MySQL 사용자 저장소를 사용합니다.")
-        return MySQLUserStore(config)
+        store = MySQLUserStore(config)
+        MYSQL_CONNECTION_ERROR = None
+        return store
     except Exception as error:
-        print(f"MySQL 연결 실패로 메모리 사용자 저장소를 사용합니다: {error}")
+        MYSQL_CONNECTION_ERROR = str(error)
+        print(f"MySQL 연결 실패로 메모리 사용자 저장소를 사용합니다: {error}", flush=True)
         return MemoryUserStore()
 
 
@@ -376,6 +384,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 "ok": True,
                 "storage": USER_STORE.storage_type,
                 "mysqlConfigured": mysql_config_from_env() is not None,
+                "mysqlError": MYSQL_CONNECTION_ERROR,
             })
             return
 
