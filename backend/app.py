@@ -38,15 +38,63 @@ def load_local_env(env_path):
 
 load_local_env(BASE_DIR / ".env")
 
-SESSIONS = {}
-JWT_SECRET = token_bytes(32)
-ACCESS_TOKEN_SECONDS = 15 * 60
-REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60
+LOGIN_ATTEMPTS = {}
+
+
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def load_jwt_secret():
+    secret = os.environ.get("JWT_SECRET") or os.environ.get("SECRET_KEY")
+    if secret:
+        return secret.encode("utf-8")
+
+    print(
+        "JWT_SECRET 환경변수가 없어 임시 키를 사용합니다. "
+        "Render 운영환경에는 반드시 JWT_SECRET을 설정하세요.",
+        flush=True,
+    )
+    return token_bytes(32)
+
+
+def load_password_pepper():
+    pepper = os.environ.get("PASSWORD_PEPPER", "")
+    if pepper:
+        return pepper
+
+    print(
+        "PASSWORD_PEPPER 환경변수가 없습니다. "
+        "Render 운영환경에는 반드시 PASSWORD_PEPPER를 설정하세요.",
+        flush=True,
+    )
+    return ""
+
+
+JWT_SECRET = load_jwt_secret()
+PASSWORD_PEPPER = load_password_pepper()
+ACCESS_TOKEN_SECONDS = env_int("ACCESS_TOKEN_SECONDS", 15 * 60)
+REFRESH_TOKEN_SECONDS = env_int("REFRESH_TOKEN_SECONDS", 7 * 24 * 60 * 60)
+LOGIN_LIMIT_COUNT = env_int("LOGIN_LIMIT_COUNT", 5)
+LOGIN_LIMIT_WINDOW_SECONDS = env_int("LOGIN_LIMIT_WINDOW_SECONDS", 10 * 60)
+COOKIE_SECURE = (
+    os.environ.get("COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
+    or os.environ.get("RENDER", "").lower() == "true"
+)
+
+
+def password_bytes(password, use_pepper=True):
+    if use_pepper:
+        return f"{password}{PASSWORD_PEPPER}".encode("utf-8")
+    return password.encode("utf-8")
 
 
 def hash_password(password, salt=None):
     salt = salt or token_bytes(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 120_000)
+    digest = hashlib.pbkdf2_hmac("sha256", password_bytes(password), salt, 120_000)
     return {
         "salt": base64.b64encode(salt).decode("ascii"),
         "hash": base64.b64encode(digest).decode("ascii"),
@@ -56,8 +104,12 @@ def hash_password(password, salt=None):
 def verify_password(password, password_record):
     salt = base64.b64decode(password_record["salt"])
     expected = base64.b64decode(password_record["hash"])
-    actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 120_000)
-    return hmac.compare_digest(actual, expected)
+    actual = hashlib.pbkdf2_hmac("sha256", password_bytes(password), salt, 120_000)
+    if hmac.compare_digest(actual, expected):
+        return True
+
+    legacy_actual = hashlib.pbkdf2_hmac("sha256", password_bytes(password, False), salt, 120_000)
+    return hmac.compare_digest(legacy_actual, expected)
 
 
 def make_user(user_id, password, name, role):
@@ -92,6 +144,54 @@ class MemoryUserStore:
         self.users[user_id] = make_user(user_id, password, name, role)
 
 
+class MemorySessionStore:
+    storage_type = "memory"
+
+    def __init__(self):
+        self.sessions = {}
+
+    def create_session(self, session_id, user, refresh_hash, created_at, refresh_expires_at):
+        self.sessions[session_id] = {
+            "sessionId": session_id,
+            "user": public_user(user),
+            "refreshHash": refresh_hash,
+            "createdAt": created_at,
+            "refreshExpiresAt": refresh_expires_at,
+            "revoked": False,
+        }
+
+    def get_session(self, session_id):
+        return self.sessions.get(session_id)
+
+    def list_sessions_for_user(self, user_id):
+        return [
+            session
+            for session in self.sessions.values()
+            if session["user"]["id"] == user_id
+        ]
+
+    def update_refresh_token(self, session_id, refresh_hash, refresh_expires_at):
+        session = self.sessions.get(session_id)
+        if session:
+            session["refreshHash"] = refresh_hash
+            session["refreshExpiresAt"] = refresh_expires_at
+
+    def revoke_session(self, session_id):
+        self.sessions.pop(session_id, None)
+
+    def find_by_refresh_hash(self, refresh_hash):
+        now = int(time.time())
+        for session_id, session in list(self.sessions.items()):
+            if session.get("refreshExpiresAt", 0) < now:
+                self.sessions.pop(session_id, None)
+                continue
+            if session.get("revoked"):
+                continue
+            if hmac.compare_digest(session.get("refreshHash", ""), refresh_hash):
+                return session
+        return None
+
+
 class MySQLUserStore:
     storage_type = "mysql"
 
@@ -124,6 +224,25 @@ class MySQLUserStore:
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                             ON UPDATE CURRENT_TIMESTAMP
+                    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS auth_sessions (
+                        session_id VARCHAR(128) PRIMARY KEY,
+                        user_id VARCHAR(64) NOT NULL,
+                        user_name VARCHAR(80) NOT NULL,
+                        user_role VARCHAR(30) NOT NULL,
+                        refresh_hash CHAR(64) NOT NULL,
+                        created_at BIGINT NOT NULL,
+                        refresh_expires_at BIGINT NOT NULL,
+                        revoked TINYINT(1) NOT NULL DEFAULT 0,
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_auth_sessions_user_id (user_id),
+                        INDEX idx_auth_sessions_refresh_hash (refresh_hash),
+                        INDEX idx_auth_sessions_expires_at (refresh_expires_at)
                     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
                     """
                 )
@@ -182,6 +301,128 @@ class MySQLUserStore:
                         user["password"]["hash"],
                     ),
                 )
+
+
+class MySQLSessionStore:
+    storage_type = "mysql"
+
+    def __init__(self, user_store):
+        self.user_store = user_store
+        self.cleanup_expired_sessions()
+
+    def connect(self):
+        return self.user_store.connect()
+
+    def row_to_session(self, row):
+        if not row:
+            return None
+        return {
+            "sessionId": row["session_id"],
+            "user": {
+                "id": row["user_id"],
+                "name": row["user_name"],
+                "role": row["user_role"],
+            },
+            "refreshHash": row["refresh_hash"],
+            "createdAt": int(row["created_at"]),
+            "refreshExpiresAt": int(row["refresh_expires_at"]),
+            "revoked": bool(row["revoked"]),
+        }
+
+    def cleanup_expired_sessions(self):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM auth_sessions WHERE refresh_expires_at < %s OR revoked = 1",
+                    (int(time.time()),),
+                )
+
+    def create_session(self, session_id, user, refresh_hash, created_at, refresh_expires_at):
+        public = public_user(user)
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO auth_sessions
+                        (session_id, user_id, user_name, user_role, refresh_hash, created_at, refresh_expires_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        session_id,
+                        public["id"],
+                        public["name"],
+                        public["role"],
+                        refresh_hash,
+                        created_at,
+                        refresh_expires_at,
+                    ),
+                )
+
+    def get_session(self, session_id):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT session_id, user_id, user_name, user_role, refresh_hash,
+                           created_at, refresh_expires_at, revoked
+                    FROM auth_sessions
+                    WHERE session_id = %s
+                    """,
+                    (session_id,),
+                )
+                return self.row_to_session(cursor.fetchone())
+
+    def list_sessions_for_user(self, user_id):
+        self.cleanup_expired_sessions()
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT session_id, user_id, user_name, user_role, refresh_hash,
+                           created_at, refresh_expires_at, revoked
+                    FROM auth_sessions
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                    """,
+                    (user_id,),
+                )
+                return [self.row_to_session(row) for row in cursor.fetchall()]
+
+    def update_refresh_token(self, session_id, refresh_hash, refresh_expires_at):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE auth_sessions
+                    SET refresh_hash = %s, refresh_expires_at = %s, revoked = 0
+                    WHERE session_id = %s
+                    """,
+                    (refresh_hash, refresh_expires_at, session_id),
+                )
+
+    def revoke_session(self, session_id):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE auth_sessions SET revoked = 1 WHERE session_id = %s",
+                    (session_id,),
+                )
+
+    def find_by_refresh_hash(self, refresh_hash):
+        self.cleanup_expired_sessions()
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT session_id, user_id, user_name, user_role, refresh_hash,
+                           created_at, refresh_expires_at, revoked
+                    FROM auth_sessions
+                    WHERE refresh_hash = %s AND revoked = 0 AND refresh_expires_at >= %s
+                    LIMIT 1
+                    """,
+                    (refresh_hash, int(time.time())),
+                )
+                return self.row_to_session(cursor.fetchone())
 
 
 def mysql_config_from_env():
@@ -246,6 +487,18 @@ def create_user_store():
 USER_STORE = create_user_store()
 
 
+def create_session_store(user_store):
+    if user_store.storage_type == "mysql":
+        print("MySQL 세션 저장소를 사용합니다.")
+        return MySQLSessionStore(user_store)
+
+    print("메모리 세션 저장소를 사용합니다.")
+    return MemorySessionStore()
+
+
+SESSION_STORE = create_session_store(USER_STORE)
+
+
 def json_bytes(data):
     return json.dumps(data, ensure_ascii=False).encode("utf-8")
 
@@ -296,6 +549,39 @@ def hash_token(token):
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def login_attempt_key(client_ip, user_id):
+    return f"{client_ip}:{user_id}"
+
+
+def login_is_limited(client_ip, user_id):
+    key = login_attempt_key(client_ip, user_id)
+    attempt = LOGIN_ATTEMPTS.get(key)
+    if not attempt:
+        return False
+
+    now = int(time.time())
+    if now - attempt["firstAt"] > LOGIN_LIMIT_WINDOW_SECONDS:
+        LOGIN_ATTEMPTS.pop(key, None)
+        return False
+
+    return attempt["count"] >= LOGIN_LIMIT_COUNT
+
+
+def remember_failed_login(client_ip, user_id):
+    key = login_attempt_key(client_ip, user_id)
+    now = int(time.time())
+    attempt = LOGIN_ATTEMPTS.get(key)
+    if not attempt or now - attempt["firstAt"] > LOGIN_LIMIT_WINDOW_SECONDS:
+        LOGIN_ATTEMPTS[key] = {"count": 1, "firstAt": now}
+        return
+
+    attempt["count"] += 1
+
+
+def clear_failed_login(client_ip, user_id):
+    LOGIN_ATTEMPTS.pop(login_attempt_key(client_ip, user_id), None)
+
+
 def make_access_token(user, session_id):
     now = int(time.time())
     return make_jwt({
@@ -333,14 +619,16 @@ def get_cookie(headers, name):
 
 
 def auth_cookie(refresh_token):
+    secure_option = "; Secure" if COOKIE_SECURE else ""
     return (
         f"refresh_token={refresh_token}; Path=/; HttpOnly; SameSite=Lax; "
-        f"Max-Age={REFRESH_TOKEN_SECONDS}"
+        f"Max-Age={REFRESH_TOKEN_SECONDS}{secure_option}"
     )
 
 
 def clear_refresh_cookie():
-    return "refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+    secure_option = "; Secure" if COOKIE_SECURE else ""
+    return f"refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0{secure_option}"
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -383,7 +671,9 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_json({
                 "ok": True,
                 "storage": USER_STORE.storage_type,
+                "sessionStorage": SESSION_STORE.storage_type,
                 "mysqlConfigured": mysql_config_from_env() is not None,
+                "passwordPepperConfigured": bool(PASSWORD_PEPPER),
             })
             return
 
@@ -414,8 +704,8 @@ class AppHandler(BaseHTTPRequestHandler):
                         "expiresAt": session["refreshExpiresAt"],
                         "active": not session.get("revoked", False),
                     }
-                    for session_id, session in SESSIONS.items()
-                    if session["user"]["id"] == user["id"]
+                    for session in SESSION_STORE.list_sessions_for_user(user["id"])
+                    for session_id in [session["sessionId"]]
                 ],
             })
             return
@@ -427,25 +717,36 @@ class AppHandler(BaseHTTPRequestHandler):
             body = self.read_json_body()
             user_id = body.get("userId", "")
             password = body.get("password", "")
+            client_ip = self.client_address[0]
+
+            if login_is_limited(client_ip, user_id):
+                self.send_json(
+                    {"ok": False, "message": "로그인 실패가 많습니다. 잠시 후 다시 시도하세요."},
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                )
+                return
+
             user = USER_STORE.get_user(user_id)
 
             if not user or not verify_password(password, user["password"]):
+                remember_failed_login(client_ip, user_id)
                 self.send_json(
                     {"ok": False, "message": "아이디 또는 비밀번호가 올바르지 않습니다."},
                     HTTPStatus.UNAUTHORIZED,
                 )
                 return
 
+            clear_failed_login(client_ip, user_id)
             session_id = token_urlsafe(24)
             refresh_token = make_refresh_token()
             now = int(time.time())
-            SESSIONS[session_id] = {
-                "user": public_user(user),
-                "refreshHash": hash_token(refresh_token),
-                "createdAt": now,
-                "refreshExpiresAt": now + REFRESH_TOKEN_SECONDS,
-                "revoked": False,
-            }
+            SESSION_STORE.create_session(
+                session_id,
+                user,
+                hash_token(refresh_token),
+                now,
+                now + REFRESH_TOKEN_SECONDS,
+            )
             self.send_json(
                 make_auth_payload(user, session_id),
                 headers={"Set-Cookie": auth_cookie(refresh_token)},
@@ -465,8 +766,12 @@ class AppHandler(BaseHTTPRequestHandler):
             session_id, session_data = session
             user = session_data["user"]
             new_refresh_token = make_refresh_token()
-            session_data["refreshHash"] = hash_token(new_refresh_token)
-            session_data["refreshExpiresAt"] = int(time.time()) + REFRESH_TOKEN_SECONDS
+            refresh_expires_at = int(time.time()) + REFRESH_TOKEN_SECONDS
+            SESSION_STORE.update_refresh_token(
+                session_id,
+                hash_token(new_refresh_token),
+                refresh_expires_at,
+            )
             self.send_json(
                 {
                     "ok": True,
@@ -508,7 +813,7 @@ class AppHandler(BaseHTTPRequestHandler):
         if self.path == "/api/logout":
             session_id = self.current_session_id()
             if session_id:
-                SESSIONS.pop(session_id, None)
+                SESSION_STORE.revoke_session(session_id)
 
             self.send_json(
                 {"ok": True, "message": "로그아웃 되었습니다."},
@@ -524,12 +829,12 @@ class AppHandler(BaseHTTPRequestHandler):
 
             body = self.read_json_body()
             target_session_id = body.get("sessionId", "")
-            session = SESSIONS.get(target_session_id)
+            session = SESSION_STORE.get_session(target_session_id)
             if not session or session["user"]["id"] != user["id"]:
                 self.send_json({"ok": False, "message": "세션을 찾을 수 없습니다."}, HTTPStatus.NOT_FOUND)
                 return
 
-            SESSIONS.pop(target_session_id, None)
+            SESSION_STORE.revoke_session(target_session_id)
             self.send_json({"ok": True, "message": "세션을 종료했습니다."})
             return
 
@@ -540,7 +845,7 @@ class AppHandler(BaseHTTPRequestHandler):
         if not session_id:
             return None
 
-        session = SESSIONS.get(session_id)
+        session = SESSION_STORE.get_session(session_id)
         if not session or session.get("revoked"):
             return None
 
@@ -557,7 +862,7 @@ class AppHandler(BaseHTTPRequestHandler):
             return None
 
         session_id = payload.get("sid")
-        session = SESSIONS.get(session_id)
+        session = SESSION_STORE.get_session(session_id)
         if not session or session.get("revoked"):
             return None
 
@@ -572,16 +877,10 @@ class AppHandler(BaseHTTPRequestHandler):
             return None
 
         refresh_hash = hash_token(refresh_token)
-        now = int(time.time())
-        for session_id, session in list(SESSIONS.items()):
-            if session.get("refreshExpiresAt", 0) < now:
-                SESSIONS.pop(session_id, None)
-                continue
-            if session.get("revoked"):
-                continue
-            if hmac.compare_digest(session.get("refreshHash", ""), refresh_hash):
-                return session_id, session
-        return None
+        session = SESSION_STORE.find_by_refresh_hash(refresh_hash)
+        if not session:
+            return None
+        return session["sessionId"], session
 
     def read_json_body(self):
         content_length = int(self.headers.get("Content-Length", 0))
