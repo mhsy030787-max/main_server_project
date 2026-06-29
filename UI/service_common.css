@@ -7,9 +7,66 @@
 
 body {
   min-height: 100vh;
-  padding: 28px;
+  padding: 28px 28px 28px 96px;
   background: #f4fbff;
   color: #10233f;
+}
+
+.global-nav {
+  position: fixed;
+  top: 24px;
+  bottom: 24px;
+  left: 18px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 56px;
+  padding: 12px 7px;
+  border: 1px solid rgba(143, 192, 244, 0.52);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 18px 44px rgba(43, 120, 208, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+
+.global-nav-mark,
+.global-nav-link {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(143, 192, 244, 0.58);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #236cc8;
+  font-size: 17px;
+  font-weight: 900;
+  text-decoration: none;
+  transition: 0.18s ease;
+}
+
+.global-nav-mark {
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, rgba(49, 128, 224, 0.94), rgba(116, 191, 239, 0.92));
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(43, 120, 208, 0.18);
+}
+
+.global-nav-link:hover,
+body[data-page="main"] .global-nav-link[data-nav="main"],
+body[data-page="documents"] .global-nav-link[data-nav="documents"],
+body[data-page="mail"] .global-nav-link[data-nav="mail"],
+body[data-page="logs"] .global-nav-link[data-nav="logs"],
+body[data-page="alerts"] .global-nav-link[data-nav="alerts"],
+body[data-page="schedule"] .global-nav-link[data-nav="schedule"] {
+  background: rgba(226, 245, 255, 0.86);
+  border-color: rgba(35, 108, 200, 0.72);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(43, 120, 208, 0.14);
 }
 
 .page {
@@ -246,6 +303,26 @@ tr.selected-row {
 }
 
 @media (max-width: 900px) {
+  body {
+    padding: 88px 18px 18px;
+  }
+
+  .global-nav {
+    top: 14px;
+    right: 14px;
+    bottom: auto;
+    left: 14px;
+    width: auto;
+    height: 54px;
+    flex-direction: row;
+    justify-content: center;
+    border-radius: 22px;
+  }
+
+  .global-nav-mark {
+    margin: 0;
+  }
+
   .topbar {
     align-items: flex-start;
     flex-direction: column;

@@ -14,14 +14,147 @@
 
     body {
       min-height: 100vh;
-      padding: 28px;
-      background: #f4fbff;
+      padding: 28px 28px 28px 96px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(219, 242, 255, 0.86), transparent 28%),
+        radial-gradient(circle at 84% 16%, rgba(191, 226, 255, 0.62), transparent 28%),
+        radial-gradient(circle at 50% 86%, rgba(77, 166, 230, 0.22), transparent 38%),
+        linear-gradient(180deg, #fbfdff 0%, #f3f9ff 48%, #eaf6ff 100%);
       color: #10233f;
     }
 
     .dashboard {
-      max-width: 1100px;
+      position: relative;
+      max-width: 1180px;
+      min-height: calc(100vh - 56px);
       margin: 0 auto;
+      padding: 28px;
+      overflow: hidden;
+      border: 1px solid rgba(143, 192, 244, 0.46);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 74% 16%, rgba(255, 255, 255, 0.56), transparent 28%),
+        radial-gradient(ellipse at 50% 104%, rgba(80, 169, 231, 0.2), transparent 58%),
+        rgba(255, 255, 255, 0.42);
+      box-shadow: 0 28px 80px rgba(43, 120, 208, 0.16);
+      backdrop-filter: blur(18px) saturate(150%);
+      transition: transform 0.72s cubic-bezier(0.2, 0.86, 0.18, 1), box-shadow 0.72s ease;
+    }
+
+    .dashboard::before {
+      content: "";
+      position: absolute;
+      inset: auto -6% -18% -6%;
+      height: 42%;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(130, 196, 236, 0.28)),
+        linear-gradient(14deg, transparent 0 24%, rgba(37, 99, 235, 0.08) 25% 26%, transparent 27%),
+        linear-gradient(-12deg, transparent 0 44%, rgba(147, 197, 253, 0.12) 45% 46%, transparent 47%);
+      clip-path: polygon(0 54%, 14% 35%, 30% 46%, 49% 20%, 68% 47%, 84% 31%, 100% 49%, 100% 100%, 0 100%);
+      pointer-events: none;
+    }
+
+    .dashboard::after {
+      content: "";
+      position: absolute;
+      inset: 22px 28px;
+      border: 1px solid rgba(114, 176, 238, 0.18);
+      border-radius: 30px;
+      pointer-events: none;
+    }
+
+    .page-underlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: #f4fbff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    body.is-page-open .page-underlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    body.is-page-open .dashboard {
+      transform: translate3d(0, calc(-100vh - 44px), 0);
+      box-shadow: 0 36px 90px rgba(43, 120, 208, 0.22);
+    }
+
+    .page-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #f4fbff;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.24s ease, transform 0.38s cubic-bezier(0.2, 0.86, 0.18, 1);
+    }
+
+    body.is-frame-switching .page-frame {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .global-nav {
+      position: fixed;
+      top: 24px;
+      bottom: 24px;
+      left: 18px;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 56px;
+      padding: 12px 7px;
+      border: 1px solid rgba(143, 192, 244, 0.52);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.42);
+      box-shadow:
+        0 18px 44px rgba(43, 120, 208, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.66);
+      backdrop-filter: blur(20px) saturate(150%);
+    }
+
+    .global-nav-mark,
+    .global-nav-link {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(143, 192, 244, 0.58);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.5);
+      color: #236cc8;
+      font-size: 17px;
+      font-weight: 900;
+      text-decoration: none;
+      transition: 0.18s ease;
+    }
+
+    .global-nav-mark {
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, rgba(49, 128, 224, 0.94), rgba(116, 191, 239, 0.92));
+      color: #ffffff;
+      box-shadow: 0 14px 28px rgba(43, 120, 208, 0.18);
+    }
+
+    .global-nav-link:hover,
+    body[data-page="main"] .global-nav-link[data-nav="main"] {
+      background: rgba(226, 245, 255, 0.86);
+      border-color: rgba(35, 108, 200, 0.72);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(43, 120, 208, 0.14);
+    }
+
+    .dashboard-content {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
     }
 
     .header {
@@ -29,12 +162,13 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 22px;
+      margin-bottom: 18px;
     }
 
     .header h1 {
       color: #0753b7;
       font-size: 30px;
+      letter-spacing: 0;
     }
 
     .header p {
@@ -46,33 +180,41 @@
     .user-badge {
       display: inline-flex;
       align-items: center;
-      padding: 10px 14px;
-      border: 1px solid #8db9ed;
-      border-radius: 8px;
-      background: #ffffff;
+      min-height: 42px;
+      padding: 10px 16px;
+      border: 1px solid rgba(143, 192, 244, 0.58);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.36);
       color: #0753b7;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
       text-decoration: none;
       white-space: nowrap;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56);
     }
 
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 14px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
 
     .card {
-      border: 1px solid #8db9ed;
-      border-radius: 8px;
-      background: #ffffff;
-      box-shadow: 0 12px 30px rgba(43, 120, 208, 0.1);
+      border: 1px solid rgba(143, 192, 244, 0.48);
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0.24)),
+        rgba(255, 255, 255, 0.22);
+      box-shadow:
+        0 18px 46px rgba(43, 120, 208, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.66);
+      backdrop-filter: blur(18px) saturate(150%);
     }
 
     .summary-card {
       display: block;
+      min-height: 132px;
       padding: 18px;
       color: inherit;
       text-decoration: none;
@@ -81,23 +223,23 @@
     }
 
     .summary-card:hover {
-      border-color: #1f75d6;
-      background: #eaf8ff;
-      transform: translateY(-2px);
-      box-shadow: 0 14px 30px rgba(43, 120, 208, 0.16);
+      border-color: rgba(35, 108, 200, 0.7);
+      background: rgba(234, 248, 255, 0.72);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 36px rgba(43, 120, 208, 0.16);
     }
 
     .summary-card span {
       color: #5b7c93;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .summary-card strong {
       display: block;
       margin-top: 10px;
       color: #10233f;
-      font-size: 30px;
+      font-size: 34px;
     }
 
     .summary-card small {
@@ -105,11 +247,11 @@
       margin-top: 8px;
       color: #0284c7;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .service-panel {
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       padding: 20px;
     }
 
@@ -121,12 +263,14 @@
       margin-bottom: 16px;
     }
 
-    .panel-header h2 {
+    .panel-header h2,
+    .panel h2 {
       color: #0753b7;
       font-size: 20px;
     }
 
     .panel-header p {
+      margin-top: 4px;
       color: #5b7c93;
       font-size: 13px;
     }
@@ -139,28 +283,29 @@
 
     .service-button {
       display: block;
-      min-height: 82px;
-      padding: 16px 10px;
-      border: 1px solid #8db9ed;
-      border-radius: 8px;
-      background: #fbfdff;
+      min-height: 86px;
+      padding: 17px 12px;
+      border: 1px solid rgba(143, 192, 244, 0.56);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.28);
       color: #10233f;
       text-align: center;
       cursor: pointer;
       text-decoration: none;
       transition: 0.2s;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.46);
     }
 
     .service-button:hover {
-      border-color: #1f75d6;
-      background: #eaf8ff;
+      border-color: rgba(35, 108, 200, 0.72);
+      background: rgba(226, 245, 255, 0.76);
       transform: translateY(-2px);
-      box-shadow: 0 10px 22px rgba(43, 120, 208, 0.16);
+      box-shadow: 0 12px 26px rgba(43, 120, 208, 0.14);
     }
 
     .service-button strong {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 7px;
       font-size: 14px;
     }
 
@@ -174,43 +319,44 @@
     .main-grid {
       display: grid;
       grid-template-columns: 1.25fr 0.75fr;
-      gap: 18px;
+      gap: 16px;
     }
 
     .panel {
+      min-height: 285px;
       padding: 20px;
     }
 
     .panel h2 {
       margin-bottom: 14px;
-      color: #0753b7;
-      font-size: 20px;
     }
 
     table {
       width: 100%;
+      overflow: hidden;
       border-collapse: collapse;
+      border-radius: 16px;
       font-size: 14px;
     }
 
     th {
-      padding: 12px 10px;
-      background: #eaf8ff;
+      padding: 13px 12px;
+      background: rgba(226, 245, 255, 0.78);
       color: #426b80;
       text-align: left;
     }
 
     td {
-      padding: 13px 10px;
-      border-top: 1px solid #d7ecff;
+      padding: 13px 12px;
+      border-top: 1px solid rgba(215, 236, 255, 0.72);
     }
 
     .status {
       display: inline-block;
       padding: 5px 8px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .status.safe {
@@ -230,10 +376,11 @@
     }
 
     .alert-list li {
-      padding: 14px;
-      border: 1px solid #d7ecff;
-      border-radius: 8px;
-      background: #fbfdff;
+      padding: 15px;
+      border: 1px solid rgba(215, 236, 255, 0.82);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
     }
 
     .alert-list strong {
@@ -257,13 +404,39 @@
     }
 
     .schedule-card:hover {
-      border-color: #1f75d6;
-      background: #eaf8ff;
+      border-color: rgba(35, 108, 200, 0.72);
+      background: rgba(234, 248, 255, 0.72);
       transform: translateY(-2px);
-      box-shadow: 0 14px 30px rgba(43, 120, 208, 0.16);
+      box-shadow: 0 18px 36px rgba(43, 120, 208, 0.16);
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 980px) {
+      body {
+        padding: 88px 18px 18px;
+      }
+
+      .dashboard {
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 18px;
+      }
+
+      .global-nav {
+        top: 14px;
+        right: 14px;
+        bottom: auto;
+        left: 14px;
+        width: auto;
+        height: 54px;
+        flex-direction: row;
+        justify-content: center;
+        border-radius: 22px;
+      }
+
+      .global-nav-mark {
+        margin: 0;
+      }
+
       .header {
         align-items: flex-start;
         flex-direction: column;
@@ -283,105 +456,276 @@
   </style>
 </head>
 <body data-page="main">
+  <div class="page-underlay" id="pageUnderlay" aria-hidden="true">
+    <iframe class="page-frame" id="pageFrame" title="선택한 화면"></iframe>
+  </div>
+
+  <nav class="global-nav" aria-label="공통 메뉴">
+    <a class="global-nav-mark" href="main_ui.html" title="DataVault">D</a>
+    <a class="global-nav-link" data-nav="main" href="main_ui.html" title="대시보드">⌂</a>
+    <a class="global-nav-link" data-nav="documents" href="document_ui.html" title="문서 관리">▤</a>
+    <a class="global-nav-link" data-nav="mail" href="mail_ui.html" title="사내 메일">✉</a>
+    <a class="global-nav-link" data-nav="logs" href="log_ui.html" title="로그 조회">◷</a>
+    <a class="global-nav-link" data-nav="alerts" href="notice_ui.html" title="알림">!</a>
+    <a class="global-nav-link" data-nav="schedule" href="schedule_ui.html" title="일정">□</a>
+  </nav>
+
   <main class="dashboard">
-    <section class="header">
-      <div>
-        <h1>대시보드</h1>
-        <p>문서 현황, 접근 기록, 보안 알림을 한눈에 확인합니다.</p>
-      </div>
-      <a class="user-badge" href="mypage_ui.html">마이페이지</a>
-    </section>
-
-    <section class="summary-grid">
-      <a class="card summary-card" href="document_ui.html" aria-label="전체 문서 문서관리로 이동">
-        <span>전체 문서</span>
-        <strong id="totalDocuments">-</strong>
-        <small>암호화 저장</small>
-      </a>
-
-      <a class="card summary-card" href="document_ui.html" aria-label="오늘 업로드 문서관리로 이동">
-        <span>오늘 업로드</span>
-        <strong id="todayUploads">-</strong>
-        <small>정상 처리</small>
-      </a>
-
-      <a class="card summary-card" href="notice_ui.html?filter=%EC%8A%B9%EC%9D%B8%20%EC%9A%94%EC%B2%AD" aria-label="승인 요청 알림으로 이동">
-        <span>승인 대기</span>
-        <strong id="pendingApprovals">-</strong>
-        <small>검토 필요</small>
-      </a>
-
-      <a class="card summary-card" href="notice_ui.html?filter=%EB%B3%B4%EC%95%88%20%EC%9D%B4%EB%B2%A4%ED%8A%B8" aria-label="보안 이벤트 알림으로 이동">
-        <span>보안 알림</span>
-        <strong id="securityAlerts">-</strong>
-        <small>확인 필요</small>
-      </a>
-
-    </section>
-
-    <section class="card service-panel">
-      <div class="panel-header">
+    <section class="dashboard-content">
+      <section class="header">
         <div>
-          <h2>웹서비스 기능</h2>
-          <p>자주 사용하는 기능을 빠르게 실행합니다.</p>
+          <h1>대시보드</h1>
+          <p>문서 현황, 접근 기록, 보안 알림을 한눈에 확인합니다.</p>
         </div>
-      </div>
+        <a class="user-badge" href="mypage_ui.html">마이페이지</a>
+      </section>
 
-      <div class="service-grid">
-        <a class="service-button" href="document_ui.html">
-          <strong>문서 관리</strong>
-          <span>업로드, 다운로드, 검색, 삭제</span>
+      <section class="summary-grid">
+        <a class="card summary-card" href="document_ui.html" aria-label="전체 문서 문서관리로 이동">
+          <span>전체 문서</span>
+          <strong id="totalDocuments">-</strong>
+          <small>암호화 저장</small>
         </a>
 
-        <a class="service-button" href="mail_ui.html">
-          <strong>사내 메일</strong>
-          <span>내부 메일과 문서 첨부</span>
+        <a class="card summary-card" href="document_ui.html" aria-label="오늘 업로드 문서관리로 이동">
+          <span>오늘 업로드</span>
+          <strong id="todayUploads">-</strong>
+          <small>정상 처리</small>
         </a>
 
-        <a class="service-button" href="log_ui.html">
-          <strong>로그 조회</strong>
-          <span>접근과 다운로드 기록 확인</span>
+        <a class="card summary-card" href="notice_ui.html?filter=%EC%8A%B9%EC%9D%B8%20%EC%9A%94%EC%B2%AD" aria-label="승인 요청 알림으로 이동">
+          <span>승인 대기</span>
+          <strong id="pendingApprovals">-</strong>
+          <small>검토 필요</small>
         </a>
 
-        <a class="service-button" href="notice_ui.html">
-          <strong>알림</strong>
-          <span>승인 요청과 알림 관리</span>
+        <a class="card summary-card" href="notice_ui.html?filter=%EB%B3%B4%EC%95%88%20%EC%9D%B4%EB%B2%A4%ED%8A%B8" aria-label="보안 이벤트 알림으로 이동">
+          <span>보안 알림</span>
+          <strong id="securityAlerts">-</strong>
+          <small>확인 필요</small>
         </a>
-      </div>
-    </section>
+      </section>
 
-    <section class="main-grid">
-      <article class="card panel">
-        <h2>최근 문서</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>문서명</th>
-              <th>소유자</th>
-              <th>등급</th>
-              <th>상태</th>
-            </tr>
-          </thead>
-          <tbody id="documentRows">
-            <tr>
-              <td colspan="4">문서 정보를 불러오는 중입니다.</td>
-            </tr>
-          </tbody>
-        </table>
-      </article>
+      <section class="card service-panel">
+        <div class="panel-header">
+          <div>
+            <h2>웹서비스 기능</h2>
+            <p>자주 사용하는 기능을 빠르게 실행합니다.</p>
+          </div>
+        </div>
 
-      <a class="card panel schedule-card" href="schedule_ui.html">
-        <h2>오늘 일정</h2>
-        <ul id="scheduleList" class="alert-list">
-          <li>
-            <strong>불러오는 중</strong>
-            <span>오늘 일정을 가져오고 있습니다.</span>
-          </li>
-        </ul>
-      </a>
+        <div class="service-grid">
+          <a class="service-button" href="document_ui.html">
+            <strong>문서 관리</strong>
+            <span>업로드, 다운로드, 검색, 삭제</span>
+          </a>
+
+          <a class="service-button" href="mail_ui.html">
+            <strong>사내 메일</strong>
+            <span>내부 메일과 문서 첨부</span>
+          </a>
+
+          <a class="service-button" href="log_ui.html">
+            <strong>로그 조회</strong>
+            <span>접근과 다운로드 기록 확인</span>
+          </a>
+
+          <a class="service-button" href="notice_ui.html">
+            <strong>알림</strong>
+            <span>승인 요청과 알림 관리</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="main-grid">
+        <article class="card panel">
+          <h2>최근 문서</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>문서명</th>
+                <th>소유자</th>
+                <th>등급</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="documentRows">
+              <tr>
+                <td colspan="4">문서 정보를 불러오는 중입니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <a class="card panel schedule-card" href="schedule_ui.html">
+          <h2>오늘 일정</h2>
+          <ul id="scheduleList" class="alert-list">
+            <li>
+              <strong>불러오는 중</strong>
+              <span>오늘 일정을 가져오고 있습니다.</span>
+            </li>
+          </ul>
+        </a>
+      </section>
     </section>
   </main>
 
   <script src="app_frontend.js"></script>
+  <script>
+    const pageUnderlay = document.querySelector("#pageUnderlay");
+    const pageFrame = document.querySelector("#pageFrame");
+    const animatedLinks = document.querySelectorAll(".dashboard a[href], .global-nav a[href]");
+    let closeFrameTimer = null;
+    let switchFrameTimer = null;
+
+    function pageHref(href) {
+      try {
+        const url = new URL(href, window.location.href);
+        const fileName = url.pathname.split("/").pop() || "main_ui.html";
+        return `${fileName}${url.search}`;
+      } catch (error) {
+        return href;
+      }
+    }
+
+    function pageFile(href) {
+      return pageHref(href).split("?")[0];
+    }
+
+    function isDashboardHref(href) {
+      const file = pageFile(href);
+      return file === "" || file === "main_ui.html";
+    }
+
+    function setActiveNav(href) {
+      const navByPage = {
+        "main_ui.html": "main",
+        "document_ui.html": "documents",
+        "mail_ui.html": "mail",
+        "log_ui.html": "logs",
+        "notice_ui.html": "alerts",
+        "schedule_ui.html": "schedule",
+      };
+      document.body.dataset.page = navByPage[pageFile(href)] || "main";
+    }
+
+    function closePage() {
+      window.clearTimeout(closeFrameTimer);
+      window.clearTimeout(switchFrameTimer);
+      document.body.classList.remove("is-frame-switching");
+      document.body.classList.remove("is-page-open");
+      setActiveNav("main_ui.html");
+
+      closeFrameTimer = window.setTimeout(function () {
+        if (!document.body.classList.contains("is-page-open")) {
+          pageUnderlay.setAttribute("aria-hidden", "true");
+          pageFrame.removeAttribute("src");
+        }
+      }, 720);
+    }
+
+    function openPage(href) {
+      const targetHref = pageHref(href);
+
+      if (isDashboardHref(targetHref)) {
+        closePage();
+        return;
+      }
+
+      window.clearTimeout(closeFrameTimer);
+      window.clearTimeout(switchFrameTimer);
+      document.body.classList.remove("is-frame-switching");
+      pageUnderlay.setAttribute("aria-hidden", "false");
+      setActiveNav(targetHref);
+
+      if (pageFrame.getAttribute("src") !== targetHref) {
+        pageFrame.src = targetHref;
+      }
+
+      document.body.classList.add("is-page-open");
+    }
+
+    function transitionToPage(href) {
+      const targetHref = pageHref(href);
+
+      if (isDashboardHref(targetHref)) {
+        closePage();
+        return;
+      }
+
+      if (!document.body.classList.contains("is-page-open")) {
+        openPage(targetHref);
+        return;
+      }
+
+      if (pageFrame.getAttribute("src") === targetHref) {
+        setActiveNav(targetHref);
+        return;
+      }
+
+      window.clearTimeout(closeFrameTimer);
+      window.clearTimeout(switchFrameTimer);
+      pageUnderlay.setAttribute("aria-hidden", "false");
+      document.body.classList.add("is-page-open");
+      document.body.classList.add("is-frame-switching");
+      setActiveNav(targetHref);
+
+      switchFrameTimer = window.setTimeout(function () {
+        pageFrame.src = targetHref;
+      }, 180);
+    }
+
+    animatedLinks.forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        const href = link.getAttribute("href");
+        const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+        const opensNewContext = link.target === "_blank" || event.button !== 0;
+
+        if (!href || href.startsWith("#") || isModifiedClick || opensNewContext) {
+          return;
+        }
+
+        event.preventDefault();
+        transitionToPage(href);
+      });
+    });
+
+    pageFrame.addEventListener("load", function () {
+      let framePath = "";
+
+      try {
+        framePath = pageFrame.contentWindow.location.pathname;
+      } catch (error) {
+        return;
+      }
+
+      if (framePath.endsWith("/main_ui.html") || framePath.endsWith("/")) {
+        closePage();
+        return;
+      }
+
+      window.clearTimeout(switchFrameTimer);
+      document.body.classList.remove("is-frame-switching");
+    });
+
+    window.addEventListener("message", function (event) {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const data = event.data || {};
+      if (data.type !== "datavault:navigate" || !data.href) {
+        return;
+      }
+
+      transitionToPage(data.href);
+    });
+
+    window.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && document.body.classList.contains("is-page-open")) {
+        closePage();
+      }
+    });
+  </script>
 </body>
 </html>

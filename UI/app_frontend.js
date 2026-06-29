@@ -192,6 +192,31 @@ const App = (() => {
     return `${API_BASE}${path}`;
   }
 
+  function initEmbeddedNavigation() {
+    if (window.parent === window) {
+      return;
+    }
+
+    const navigableLinks = document.querySelectorAll(".global-nav a[href], .back-link[href]");
+    navigableLinks.forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const href = link.getAttribute("href");
+        const isModifiedClick = event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+        const opensNewContext = link.target === "_blank" || event.button !== 0;
+
+        if (!href || href.startsWith("#") || isModifiedClick || opensNewContext) {
+          return;
+        }
+
+        event.preventDefault();
+        window.parent.postMessage({
+          type: "datavault:navigate",
+          href,
+        }, window.location.origin);
+      });
+    });
+  }
+
   async function requireLogin() {
     try {
       let accessToken = localStorage.getItem("accessToken");
@@ -1201,6 +1226,8 @@ const App = (() => {
   }
 
   async function init() {
+    initEmbeddedNavigation();
+
     const page = document.body.dataset.page;
     if (!page || page === "login") return;
 
