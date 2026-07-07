@@ -197,6 +197,13 @@ const App = (() => {
       return;
     }
 
+    let parentOrigin = window.location.origin;
+    try {
+      parentOrigin = window.parent.location.origin;
+    } catch (error) {
+      parentOrigin = window.location.origin === "null" ? "*" : window.location.origin;
+    }
+
     const navigableLinks = document.querySelectorAll(".global-nav a[href], .back-link[href]");
     navigableLinks.forEach((link) => {
       link.addEventListener("click", (event) => {
@@ -212,7 +219,7 @@ const App = (() => {
         window.parent.postMessage({
           type: "datavault:navigate",
           href,
-        }, window.location.origin);
+        }, parentOrigin);
       });
     });
   }
