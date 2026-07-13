@@ -130,6 +130,13 @@
       margin-bottom: 13px;
     }
 
+    .field-help {
+      margin: 7px 8px 0;
+      color: #6b8299;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     label {
       display: block;
       margin-bottom: 7px;
@@ -138,8 +145,7 @@
       font-weight: 800;
     }
 
-    input,
-    select {
+    input {
       width: 100%;
       height: 48px;
       padding: 0 18px;
@@ -158,8 +164,7 @@
       color: #7f96aa;
     }
 
-    input:focus,
-    select:focus {
+    input:focus {
       border-color: rgba(93, 177, 255, 0.92);
       box-shadow:
         0 0 0 4px rgba(37, 99, 235, 0.14),
@@ -261,8 +266,7 @@
         font-size: 34px;
       }
 
-      input,
-      select {
+      input {
         height: 46px;
       }
     }
@@ -278,31 +282,29 @@
         <form id="signupForm">
           <div class="field">
             <label for="name">이름</label>
-            <input id="name" type="text" placeholder="예: 김사원" required>
+            <input id="name" type="text" placeholder="예: 김사원" autocomplete="name" minlength="2" maxlength="30" required>
           </div>
 
           <div class="field">
             <label for="userId">아이디</label>
-            <input id="userId" type="text" placeholder="로그인에 사용할 아이디" required>
+            <input id="userId" type="text" placeholder="로그인에 사용할 아이디" autocomplete="username" minlength="4" maxlength="32" pattern="[A-Za-z0-9_]+" required>
+            <p class="field-help">영문, 숫자, 밑줄을 사용해 4~32자로 입력하세요.</p>
+          </div>
+
+          <div class="field">
+            <label for="email">이메일</label>
+            <input id="email" type="email" placeholder="비밀번호 찾기에 사용할 이메일" autocomplete="email" maxlength="254" required>
           </div>
 
           <div class="field">
             <label for="password">비밀번호</label>
-            <input id="password" type="password" placeholder="비밀번호" required>
+            <input id="password" type="password" placeholder="비밀번호" autocomplete="new-password" minlength="8" maxlength="128" required>
+            <p class="field-help">영문과 숫자를 포함해 8자 이상 입력하세요.</p>
           </div>
 
           <div class="field">
             <label for="passwordConfirm">비밀번호 확인</label>
-            <input id="passwordConfirm" type="password" placeholder="비밀번호를 한 번 더 입력" required>
-          </div>
-
-          <div class="field">
-            <label for="role">역할</label>
-            <select id="role">
-              <option value="사원">사원</option>
-              <option value="팀장">팀장</option>
-              <option value="관리자">관리자</option>
-            </select>
+            <input id="passwordConfirm" type="password" placeholder="비밀번호를 한 번 더 입력" autocomplete="new-password" minlength="8" maxlength="128" required>
           </div>
 
           <button type="submit">회원가입</button>
@@ -321,9 +323,11 @@
   <script>
     const signupForm = document.querySelector("#signupForm");
     const message = document.querySelector("#message");
-    const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
-      ? "http://127.0.0.1:8000"
-      : "";
+    const API_BASE = window.DATAVAULT_API_BASE || (
+      ["127.0.0.1", "localhost"].includes(location.hostname) && ["5500", "5501"].includes(location.port)
+        ? "http://127.0.0.1:8000"
+        : ""
+    );
 
     function showMessage(text, isError) {
       message.textContent = text;
@@ -339,9 +343,19 @@
 
       const name = document.querySelector("#name").value.trim();
       const userId = document.querySelector("#userId").value.trim();
+      const email = document.querySelector("#email").value.trim();
       const password = document.querySelector("#password").value;
       const passwordConfirm = document.querySelector("#passwordConfirm").value;
-      const role = document.querySelector("#role").value;
+
+      if (!/^[A-Za-z0-9_]{4,32}$/.test(userId)) {
+        showMessage("아이디는 영문, 숫자, 밑줄을 사용해 4~32자로 입력하세요.", true);
+        return;
+      }
+
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+        showMessage("비밀번호에는 영문과 숫자를 포함해 8자 이상 입력하세요.", true);
+        return;
+      }
 
       if (password !== passwordConfirm) {
         showMessage("비밀번호가 서로 다릅니다.", true);
@@ -356,7 +370,7 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ name, userId, password, role })
+          body: JSON.stringify({ name, userId, email, password })
         });
         const result = await response.json();
 
@@ -367,7 +381,7 @@
 
         showMessage("회원가입이 완료되었습니다. 로그인 화면으로 이동합니다.", false);
         setTimeout(function () {
-          window.location.href = "login_ui.html";
+          window.location.href = `login_ui.html?userId=${encodeURIComponent(result.user.id)}`;
         }, 900);
       } catch (error) {
         showMessage("서버에 연결할 수 없습니다.", true);

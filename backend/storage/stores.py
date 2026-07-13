@@ -1,9 +1,11 @@
 import hmac
 import os
 import time
+from threading import RLock
 from urllib.parse import unquote, urlparse
 
 from auth.users import DEFAULT_USERS, make_user, public_user
+from security.passwords import hash_password
 from security.jwt import hash_token
 
 try:
@@ -15,11 +17,16 @@ except ImportError:
 MYSQL_CONNECTION_ERROR = None
 
 
+class DuplicateUserError(Exception):
+    pass
+
+
 class MemoryUserStore:
     storage_type = "memory"
 
     def __init__(self):
         self.users = dict(DEFAULT_USERS)
+        self.lock = RLock()
 
     def get_user(self, user_id):
         return self.users.get(user_id)
@@ -27,8 +34,21 @@ class MemoryUserStore:
     def user_exists(self, user_id):
         return user_id in self.users
 
-    def create_user(self, user_id, password, name, role):
-        self.users[user_id] = make_user(user_id, password, name, role)
+    def create_user(self, user_id, password, name, role, email=None):
+        with self.lock:
+            if user_id in self.users:
+                raise DuplicateUserError(user_id)
+            self.users[user_id] = make_user(user_id, password, name, role, email)
+
+    def find_user_for_reset(self, user_id, email):
+        user = self.users.get(user_id)
+        if user and user.get("email") == email:
+            return user
+        return None
+
+    def update_password(self, user_id, password):
+        with self.lock:
+            self.users[user_id]["password"] = hash_password(password)
 
 
 class MemorySessionStore:
@@ -65,6 +85,11 @@ class MemorySessionStore:
 
     def revoke_session(self, session_id):
         self.sessions.pop(session_id, None)
+
+    def revoke_all_for_user(self, user_id):
+        for session_id, session in list(self.sessions.items()):
+            if session["user"]["id"] == user_id:
+                self.sessions.pop(session_id, None)
 
     def find_by_refresh_hash(self, refresh_hash):
         now = int(time.time())
@@ -106,6 +131,7 @@ class MySQLUserStore:
                         user_id VARCHAR(64) PRIMARY KEY,
                         name VARCHAR(80) NOT NULL,
                         role VARCHAR(30) NOT NULL,
+                        email VARCHAR(254) NULL,
                         password_salt VARCHAR(128) NOT NULL,
                         password_hash VARCHAR(128) NOT NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -114,6 +140,17 @@ class MySQLUserStore:
                     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
                     """
                 )
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM information_schema.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'users'
+                      AND COLUMN_NAME = 'email'
+                    """
+                )
+                if cursor.fetchone()["count"] == 0:
+                    cursor.execute("ALTER TABLE users ADD COLUMN email VARCHAR(254) NULL AFTER role")
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -146,6 +183,7 @@ class MySQLUserStore:
             "id": row["user_id"],
             "name": row["name"],
             "role": row["role"],
+            "email": row.get("email"),
             "password": {
                 "salt": row["password_salt"],
                 "hash": row["password_hash"],
@@ -157,7 +195,7 @@ class MySQLUserStore:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, name, role, password_salt, password_hash
+                    SELECT user_id, name, role, email, password_salt, password_hash
                     FROM users
                     WHERE user_id = %s
                     """,
@@ -168,26 +206,56 @@ class MySQLUserStore:
     def user_exists(self, user_id):
         return self.get_user(user_id) is not None
 
-    def create_user(self, user_id, password, name, role):
-        self.insert_user(make_user(user_id, password, name, role))
+    def create_user(self, user_id, password, name, role, email=None):
+        self.insert_user(make_user(user_id, password, name, role, email))
 
-    def insert_user(self, user):
+    def find_user_for_reset(self, user_id, email):
         with self.connect() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO users
-                        (user_id, name, role, password_salt, password_hash)
-                    VALUES (%s, %s, %s, %s, %s)
+                    SELECT user_id, name, role, email, password_salt, password_hash
+                    FROM users WHERE user_id = %s AND email = %s
                     """,
-                    (
-                        user["id"],
-                        user["name"],
-                        user["role"],
-                        user["password"]["salt"],
-                        user["password"]["hash"],
-                    ),
+                    (user_id, email),
                 )
+                return self.row_to_user(cursor.fetchone())
+
+    def update_password(self, user_id, password):
+        record = hash_password(password)
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE users SET password_salt = %s, password_hash = %s
+                    WHERE user_id = %s
+                    """,
+                    (record["salt"], record["hash"], user_id),
+                )
+
+    def insert_user(self, user):
+        try:
+            with self.connect() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO users
+                            (user_id, name, role, email, password_salt, password_hash)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            user["id"],
+                            user["name"],
+                            user["role"],
+                            user.get("email"),
+                            user["password"]["salt"],
+                            user["password"]["hash"],
+                        ),
+                    )
+        except pymysql.err.IntegrityError as error:
+            if error.args and error.args[0] == 1062:
+                raise DuplicateUserError(user["id"]) from error
+            raise
 
 
 class MySQLSessionStore:
@@ -293,6 +361,14 @@ class MySQLSessionStore:
                 cursor.execute(
                     "UPDATE auth_sessions SET revoked = 1 WHERE session_id = %s",
                     (session_id,),
+                )
+
+    def revoke_all_for_user(self, user_id):
+        with self.connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE auth_sessions SET revoked = 1 WHERE user_id = %s",
+                    (user_id,),
                 )
 
     def find_by_refresh_hash(self, refresh_hash):

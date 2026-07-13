@@ -1,11 +1,12 @@
 from security.passwords import hash_password
 
 
-def make_user(user_id, password, name, role):
+def make_user(user_id, password, name, role, email=None):
     return {
         "id": user_id,
         "name": name,
         "role": role,
+        "email": email,
         "password": hash_password(password),
     }
 

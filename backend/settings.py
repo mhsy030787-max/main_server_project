@@ -48,9 +48,21 @@ load_local_env(BASE_DIR / ".env")
 JWT_SECRET = load_jwt_secret()
 ACCESS_TOKEN_SECONDS = env_int("ACCESS_TOKEN_SECONDS", 15 * 60)
 REFRESH_TOKEN_SECONDS = env_int("REFRESH_TOKEN_SECONDS", 7 * 24 * 60 * 60)
+PASSWORD_RESET_SECONDS = env_int("PASSWORD_RESET_SECONDS", 15 * 60)
 LOGIN_LIMIT_COUNT = env_int("LOGIN_LIMIT_COUNT", 5)
 LOGIN_LIMIT_WINDOW_SECONDS = env_int("LOGIN_LIMIT_WINDOW_SECONDS", 10 * 60)
 COOKIE_SECURE = (
     os.environ.get("COOKIE_SECURE", "").lower() in {"1", "true", "yes"}
     or os.environ.get("RENDER", "").lower() == "true"
 )
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").strip()
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = env_int("SMTP_PORT", 587)
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_SENDER = os.environ.get("SMTP_SENDER", SMTP_USER).strip()
+SMTP_STARTTLS = os.environ.get("SMTP_STARTTLS", "true").lower() in {"1", "true", "yes"}
+EXPOSE_RESET_LINK = os.environ.get(
+    "EXPOSE_RESET_LINK",
+    "false" if os.environ.get("RENDER", "").lower() == "true" else "true",
+).lower() in {"1", "true", "yes"}

@@ -14,9 +14,26 @@ from auth.service import (
     remember_failed_login,
     rotate_refresh_token,
 )
+from auth.registration import (
+    RegistrationValidationError,
+    validate_password,
+    validate_registration,
+)
+from auth.password_reset import (
+    consume_reset_token,
+    create_reset_token,
+    make_reset_url,
+    send_reset_email,
+    smtp_is_configured,
+)
 from security.passwords import verify_password
-from settings import ACCESS_TOKEN_SECONDS
-from storage.stores import SESSION_STORE, USER_STORE, mysql_config_from_env
+from settings import ACCESS_TOKEN_SECONDS, EXPOSE_RESET_LINK, PUBLIC_BASE_URL
+from storage.stores import (
+    DuplicateUserError,
+    SESSION_STORE,
+    USER_STORE,
+    mysql_config_from_env,
+)
 
 
 def handle_api_get(handler):
@@ -124,27 +141,111 @@ def handle_api_post(handler):
 
     if handler.path == "/api/register":
         body = handler.read_json_body()
-        user_id = body.get("userId", "").strip()
-        password = body.get("password", "")
-        name = body.get("name", "").strip()
-        role = body.get("role", "사원")
-
-        if not user_id or not password or not name:
+        try:
+            registration = validate_registration(
+                body.get("userId"),
+                body.get("password"),
+                body.get("name"),
+                body.get("email"),
+            )
+        except RegistrationValidationError as error:
             handler.send_json(
-                {"ok": False, "message": "이름, 아이디, 비밀번호를 모두 입력하세요."},
+                {"ok": False, "message": str(error)},
                 HTTPStatus.BAD_REQUEST,
             )
             return
 
-        if USER_STORE.user_exists(user_id):
+        try:
+            USER_STORE.create_user(**registration)
+        except DuplicateUserError:
             handler.send_json(
                 {"ok": False, "message": "이미 존재하는 아이디입니다."},
                 HTTPStatus.CONFLICT,
             )
             return
+        except Exception as error:
+            print(f"회원가입 저장 실패: {error}", flush=True)
+            handler.send_json(
+                {"ok": False, "message": "회원 정보를 저장하지 못했습니다. 잠시 후 다시 시도하세요."},
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+            return
 
-        USER_STORE.create_user(user_id, password, name, role)
-        handler.send_json({"ok": True, "message": "회원가입이 완료되었습니다."}, HTTPStatus.CREATED)
+        handler.send_json(
+            {
+                "ok": True,
+                "message": "회원가입이 완료되었습니다.",
+                "user": {
+                    "id": registration["user_id"],
+                    "name": registration["name"],
+                    "role": registration["role"],
+                },
+            },
+            HTTPStatus.CREATED,
+        )
+        return
+
+    if handler.path == "/api/password-reset/request":
+        if not smtp_is_configured() and not EXPOSE_RESET_LINK:
+            handler.send_json(
+                {"ok": False, "message": "비밀번호 재설정 메일 서버가 준비되지 않았습니다."},
+                HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+            return
+
+        body = handler.read_json_body()
+        user_id = str(body.get("userId", "")).strip()
+        email = str(body.get("email", "")).strip().lower()
+        response = {
+            "ok": True,
+            "message": "입력한 정보와 일치하는 계정이 있으면 재설정 메일을 발송합니다.",
+        }
+        user = USER_STORE.find_user_for_reset(user_id, email)
+        if user:
+            token = create_reset_token(user_id)
+            forwarded_proto = handler.headers.get("X-Forwarded-Proto", "").split(",")[0]
+            scheme = forwarded_proto or ("https" if handler.headers.get("X-Forwarded-Host") else "http")
+            host = handler.headers.get("X-Forwarded-Host") or handler.headers.get("Host", "127.0.0.1:8000")
+            reset_url = make_reset_url(PUBLIC_BASE_URL or f"{scheme}://{host}", token)
+            try:
+                sent = send_reset_email(email, reset_url)
+            except Exception as error:
+                sent = False
+                print(f"비밀번호 재설정 메일 발송 실패: {error}", flush=True)
+            if EXPOSE_RESET_LINK and not sent:
+                response["developmentResetUrl"] = reset_url
+
+        handler.send_json(response)
+        return
+
+    if handler.path == "/api/password-reset/confirm":
+        body = handler.read_json_body()
+        try:
+            password = validate_password(body.get("password"))
+        except RegistrationValidationError as error:
+            handler.send_json({"ok": False, "message": str(error)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        user_id = consume_reset_token(str(body.get("token", "")))
+        if not user_id:
+            handler.send_json(
+                {"ok": False, "message": "재설정 링크가 만료되었거나 이미 사용되었습니다."},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        try:
+            USER_STORE.update_password(user_id, password)
+            SESSION_STORE.revoke_all_for_user(user_id)
+        except Exception as error:
+            print(f"비밀번호 변경 실패: {error}", flush=True)
+            handler.send_json(
+                {"ok": False, "message": "비밀번호를 변경하지 못했습니다."},
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+            return
+
+        handler.send_json({"ok": True, "message": "비밀번호가 변경되었습니다."})
         return
 
     if handler.path == "/api/logout":

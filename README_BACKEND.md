@@ -55,6 +55,8 @@ pip install -r requirements.txt
 - `POST /api/login`
 - `POST /api/refresh`
 - `POST /api/register`
+- `POST /api/password-reset/request`
+- `POST /api/password-reset/confirm`
 - `POST /api/logout`
 - `GET /api/me`
 - `GET /api/sessions`
@@ -65,7 +67,34 @@ pip install -r requirements.txt
 - 로그인 성공 시 Access JWT를 응답 본문으로 제공합니다.
 - Refresh Token은 HttpOnly 쿠키로 저장합니다.
 - Access JWT가 만료되면 `POST /api/refresh`로 새 토큰을 발급합니다.
-- 서버는 Refresh Token 기반 세션을 메모리에서 관리합니다.
+- 서버는 Refresh Token 기반 세션을 MySQL 사용 시 MySQL에, 로컬 메모리 모드에서는 메모리에 관리합니다.
+
+## 비밀번호 찾기
+
+회원가입 시 이메일을 함께 저장합니다. 비밀번호 찾기 요청이 들어오면 서버는 15분 동안 한 번만 사용할 수 있는 재설정 토큰을 만들고, 데이터베이스에는 토큰 원문 대신 SHA-256 해시만 저장합니다. 비밀번호 변경이 끝나면 기존 로그인 세션은 모두 종료됩니다.
+
+운영 환경에서 메일을 보내려면 다음 환경변수를 설정합니다.
+
+```text
+PUBLIC_BASE_URL=https://main-server-project.onrender.com
+SMTP_HOST=메일서버주소
+SMTP_PORT=587
+SMTP_USER=메일계정
+SMTP_PASSWORD=메일비밀번호
+SMTP_SENDER=발신이메일주소
+SMTP_STARTTLS=true
+EXPOSE_RESET_LINK=false
+```
+
+로컬 개발에서는 SMTP 설정이 없을 때 화면에 테스트용 재설정 링크가 표시됩니다. 운영 환경에서는 `EXPOSE_RESET_LINK=false`를 유지해야 합니다.
+
+## 회원가입 규칙
+
+- 이름: 한글 또는 영문 2~30자
+- 아이디: 영문, 숫자, 밑줄 4~32자
+- 비밀번호: 영문과 숫자를 포함한 8~128자
+- 신규 계정의 역할은 서버에서 항상 `사원`으로 지정합니다. 관리자나 팀장 권한은 가입 후 관리자가 변경해야 합니다.
+- 비밀번호 원문은 저장하지 않으며 사용자별 Salt를 적용한 PBKDF2 해시만 `users` 테이블에 저장합니다.
 
 ## Render 배포
 

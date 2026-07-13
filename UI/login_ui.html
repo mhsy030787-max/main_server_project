@@ -316,7 +316,7 @@
               <input type="checkbox">
               아이디 기억하기
             </label>
-            <a href="#">비밀번호 찾기</a>
+            <a href="forgot_password_ui.html">비밀번호 찾기</a>
           </div>
 
           <button type="submit">Log in</button>
@@ -335,9 +335,17 @@
   <script>
     const loginForm = document.querySelector("#loginForm");
     const message = document.querySelector("#message");
-    const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
-      ? "http://127.0.0.1:8000"
-      : "";
+    const API_BASE = window.DATAVAULT_API_BASE || (
+      ["127.0.0.1", "localhost"].includes(location.hostname) && ["5500", "5501"].includes(location.port)
+        ? "http://127.0.0.1:8000"
+        : ""
+    );
+    const registeredUserId = new URLSearchParams(location.search).get("userId");
+
+    if (registeredUserId) {
+      document.querySelector("#userId").value = registeredUserId;
+      document.querySelector("#password").focus();
+    }
 
     loginForm.addEventListener("submit", async function (event) {
       event.preventDefault();
