@@ -1,5 +1,6 @@
 const App = (() => {
   const STORAGE_KEY = "assetPlatformState";
+  const LEGACY_DEMO_USER_IDS = new Set(["staff01", "leader01", "admin01"]);
   const API_BASE = ["127.0.0.1", "localhost"].includes(location.hostname) && location.port && location.port !== "8000"
     ? "http://127.0.0.1:8000"
     : "";
@@ -18,9 +19,7 @@ const App = (() => {
       { id: 3, name: "프로젝트_계약서.docx", owner: "사원", grade: "내부", status: "보호 중", description: "프로젝트 계약 문서" },
     ],
     users: [
-      { id: 1, name: "111", userId: "staff01", role: "사원", status: "활성" },
-      { id: 2, name: "222", userId: "leader01", role: "팀장", status: "활성" },
-      { id: 3, name: "333", userId: "admin01", role: "관리자", status: "점검" },
+      { id: 1, name: "관리자", userId: "admin", role: "관리자", status: "활성" },
     ],
     grades: [
       { id: 1, name: "내부", description: "사내 공유 문서", policy: "권한 내 허용", status: "사용" },
@@ -107,6 +106,11 @@ const App = (() => {
     }
     if (!Array.isArray(next.users)) {
       next.users = clone(seed.users);
+    } else {
+      next.users = next.users.filter((user) => !LEGACY_DEMO_USER_IDS.has(user.userId));
+      if (!next.users.some((user) => user.userId === "admin")) {
+        next.users.unshift(clone(seed.users[0]));
+      }
     }
     if (!Array.isArray(next.documents)) {
       next.documents = clone(seed.documents);
