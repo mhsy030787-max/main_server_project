@@ -1,0 +1,1 @@
+"""Internal mail domain package."""

@@ -449,6 +449,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="nova_theme.css">
 </head>
 <body data-page="main">
   <div class="page-underlay" id="pageUnderlay" aria-hidden="true"></div>
@@ -457,7 +458,7 @@
     <a class="global-nav-mark" href="main_ui.html" title="DataVault">D</a>
     <a class="global-nav-link" data-nav="main" href="main_ui.html" title="대시보드">⌂</a>
     <a class="global-nav-link" data-nav="documents" href="document_ui.html" title="문서 관리">▤</a>
-    <a class="global-nav-link" data-nav="mail" href="mail_ui.html" title="사내 메일">✉</a>
+    <a class="global-nav-link" data-nav="mail" href="mail_ui.html" title="통합 메일">✉</a>
     <a class="global-nav-link" data-nav="logs" href="log_ui.html" title="로그 조회">◷</a>
     <a class="global-nav-link" data-nav="alerts" href="notice_ui.html" title="알림">!</a>
     <a class="global-nav-link" data-nav="schedule" href="schedule_ui.html" title="일정">□</a>
@@ -514,8 +515,8 @@
           </a>
 
           <a class="service-button" href="mail_ui.html">
-            <strong>사내 메일</strong>
-            <span>내부 메일과 문서 첨부</span>
+            <strong>통합 메일</strong>
+            <span>사내·외부 메일과 문서 첨부</span>
           </a>
 
           <a class="service-button" href="log_ui.html">
@@ -563,6 +564,7 @@
     </section>
   </main>
 
+  <script src="nova_shell.js"></script>
   <script src="app_frontend.js"></script>
   <script>
     const pageUnderlay = document.querySelector("#pageUnderlay");

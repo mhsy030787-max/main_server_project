@@ -42,12 +42,12 @@ const App = (() => {
       { id: 3, title: "세션 만료 예정", message: "장시간 미사용 계정 세션이 곧 종료됩니다.", type: "시스템 공지", read: true },
     ],
     schedules: [
-      { id: 1, time: "09:30", title: "전사 보안 공지 확인", description: "월간 보안 정책 공유", type: "보안", category: "회사" },
-      { id: 2, time: "10:30", title: "문서 승인 회의", description: "최고기밀 문서 다운로드 승인 검토", type: "승인", category: "팀" },
-      { id: 3, time: "17:30", title: "백업 확인", description: "암호화 문서 백업 상태 점검", type: "시스템", category: "개인" },
-      { id: 4, time: "11:00", title: "개인정보 교육", description: "사내 보안 교육 참석", type: "교육", category: "회사" },
-      { id: 5, time: "14:00", title: "보안 점검", description: "외부 IP 차단 로그와 접근 정책 확인", type: "보안", category: "팀" },
-      { id: 6, time: "18:00", title: "메일 회신", description: "승인 요청 메일 확인", type: "업무", category: "개인" },
+      { id: 1, date: todayKey(), time: "09:30", title: "전사 보안 공지 확인", description: "월간 보안 정책 공유", type: "보안", category: "회사" },
+      { id: 2, date: todayKey(), time: "10:30", title: "문서 승인 회의", description: "최고기밀 문서 다운로드 승인 검토", type: "승인", category: "팀" },
+      { id: 3, date: todayKey(), time: "17:30", title: "백업 확인", description: "암호화 문서 백업 상태 점검", type: "시스템", category: "개인" },
+      { id: 4, date: todayKey(), time: "11:00", title: "개인정보 교육", description: "사내 보안 교육 참석", type: "교육", category: "회사" },
+      { id: 5, date: todayKey(), time: "14:00", title: "보안 점검", description: "외부 IP 차단 로그와 접근 정책 확인", type: "보안", category: "팀" },
+      { id: 6, date: todayKey(), time: "18:00", title: "메일 회신", description: "승인 요청 메일 확인", type: "업무", category: "개인" },
     ],
     mails: [
       {
@@ -118,23 +118,23 @@ const App = (() => {
     if (!Array.isArray(next.logs)) {
       next.logs = clone(seed.logs);
     }
+    if (!Array.isArray(next.alerts) || next.alerts.length === 0) {
+      next.alerts = clone(seed.alerts);
+    }
     if (!Array.isArray(next.schedules)) {
       next.schedules = clone(seed.schedules);
     } else {
       next.schedules = next.schedules.map((schedule, index) => ({
         ...schedule,
+        id: schedule.id || index + 1,
+        date: schedule.date || todayKey(),
         category: seed.schedules.find((item) => item.time === schedule.time && item.title === schedule.title)?.category
           || schedule.category
           || (schedule.type === "보안" ? "회사" : schedule.type === "승인" ? "팀" : "개인"),
       }));
-      seed.schedules.forEach((schedule) => {
-        if (!next.schedules.some((item) => item.time === schedule.time && item.title === schedule.title)) {
-          next.schedules.push(clone(schedule));
-        }
-      });
       const seenSchedules = new Set();
       next.schedules = next.schedules.filter((schedule) => {
-        const key = `${schedule.time}-${schedule.title}`;
+        const key = `${schedule.date}-${schedule.time}-${schedule.title}`;
         if (seenSchedules.has(key)) return false;
         seenSchedules.add(key);
         return true;
@@ -194,6 +194,31 @@ const App = (() => {
 
   function apiPath(path) {
     return `${API_BASE}${path}`;
+  }
+
+  async function apiRequest(path, options = {}) {
+    const request = async () => {
+      const token = localStorage.getItem("accessToken");
+      const headers = { ...(options.headers || {}) };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return fetch(apiPath(path), { credentials: "include", ...options, headers });
+    };
+    let response = await request();
+    if (response.status === 401) {
+      const refreshResponse = await fetch(apiPath("/api/refresh"), { method: "POST", credentials: "include" });
+      const refreshResult = await refreshResponse.json().catch(() => ({}));
+      if (refreshResult.ok) {
+        localStorage.setItem("accessToken", refreshResult.accessToken);
+        response = await request();
+      }
+    }
+    return response;
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
+    })[character]);
   }
 
   function initEmbeddedNavigation() {
@@ -352,12 +377,20 @@ const App = (() => {
 
     const scheduleList = document.querySelector("#scheduleList");
     if (scheduleList) {
-      scheduleList.innerHTML = next.schedules.slice(0, 3).map((schedule) => `
+      const todaySchedules = next.schedules
+        .filter((schedule) => schedule.date === todayKey())
+        .sort((a, b) => a.time.localeCompare(b.time));
+      scheduleList.innerHTML = todaySchedules.length ? todaySchedules.slice(0, 3).map((schedule) => `
         <li>
-          <strong>${schedule.time} · ${schedule.title}</strong>
-          <span>${schedule.description}</span>
+          <strong>${escapeHTML(schedule.time)} · ${escapeHTML(schedule.title)}</strong>
+          <span>${escapeHTML(schedule.description)}</span>
         </li>
-      `).join("");
+      `).join("") : `
+        <li>
+          <strong>등록된 일정이 없습니다.</strong>
+          <span>일정 관리에서 오늘 일정을 추가할 수 있습니다.</span>
+        </li>
+      `;
     }
   }
 
@@ -714,133 +747,6 @@ const App = (() => {
     });
   }
 
-  function setAlertView(view) {
-    const isDetail = view === "detail";
-    const isSettings = view === "settings";
-    document.querySelector("[data-alert-list-view]")?.classList.toggle("active", view === "list");
-    document.querySelector("[data-alert-detail-view]")?.classList.toggle("active", isDetail);
-    document.querySelector("[data-alert-settings-view]")?.classList.toggle("active", isSettings);
-    document.querySelector("[data-alert-settings]")?.classList.toggle("active", isSettings);
-  }
-
-  function alertItemsByFilter(next, filter) {
-    if (filter === "읽지 않음") return next.alerts.filter((alert) => !alert.read);
-    if (filter === "전체") return next.alerts;
-    return next.alerts.filter((alert) => alert.type === filter);
-  }
-
-  function renderAlerts(next, filter = "전체") {
-    const list = document.querySelector("[data-alerts]");
-    const title = document.querySelector("[data-alert-title]");
-    if (!list || !title) return;
-    const items = alertItemsByFilter(next, filter);
-
-    setAlertView("list");
-    title.textContent = filter === "전체" ? "전체 알림" : filter;
-    document.querySelectorAll("[data-alert-filter]").forEach((button) => {
-      button.classList.toggle("active", button.dataset.alertFilter === filter);
-    });
-
-    if (items.length === 0) {
-      list.innerHTML = '<li class="notice-item"><strong>알림이 없습니다.</strong><div class="notice-meta">조건에 맞는 알림이 없습니다.</div></li>';
-      return;
-    }
-
-    list.innerHTML = items.map((alert) => `
-      <li class="notice-item" data-alert-id="${alert.id}">
-        <strong>${alert.read ? "" : "● "}${alert.title} ${alert.read ? '<span class="badge">읽음</span>' : '<span class="badge warn">새 알림</span>'}</strong>
-        <div class="notice-meta">${alert.type} · ${alert.read ? "처리됨" : "확인 필요"}</div>
-        <div class="notice-meta">${alert.message}</div>
-      </li>
-    `).join("");
-  }
-
-  function showAlertDetail(alertId) {
-    const next = state();
-    const alert = next.alerts.find((item) => String(item.id) === String(alertId));
-    const detail = document.querySelector("[data-alert-detail]");
-    if (!alert || !detail) return;
-
-    detail.innerHTML = `
-      <div class="notice-detail-header">
-        <div>
-          <h2>${alert.title}</h2>
-          <p class="notice-meta">분류: ${alert.type}</p>
-          <p class="notice-meta">상태: ${alert.read ? "읽음" : "새 알림"}</p>
-        </div>
-        <div class="notice-detail-actions">
-          <button class="secondary-button small-button" type="button" data-alert-back>목록으로</button>
-          <button class="primary-button small-button" type="button" data-read-alert="${alert.id}">읽음 처리</button>
-        </div>
-      </div>
-      <div class="notice-detail-body">
-        <p>${alert.message}</p>
-        <p class="notice-meta" style="margin-top: 18px;">관련 작업: ${alert.type === "승인 요청" ? "문서 승인 검토" : alert.type === "보안 이벤트" ? "접근 로그 확인" : "공지 확인"}</p>
-      </div>
-    `;
-    setAlertView("detail");
-  }
-
-  function initAlerts() {
-    const requestedFilter = new URLSearchParams(window.location.search).get("filter");
-    const availableFilters = ["전체", "읽지 않음", "승인 요청", "보안 이벤트", "시스템 공지"];
-    let currentFilter = availableFilters.includes(requestedFilter) ? requestedFilter : "전체";
-    renderAlerts(state(), currentFilter);
-
-    document.querySelectorAll("[data-alert-filter]").forEach((button) => {
-      button.addEventListener("click", () => {
-        currentFilter = button.dataset.alertFilter;
-        renderAlerts(state(), currentFilter);
-      });
-    });
-
-    document.querySelector("[data-alert-settings]")?.addEventListener("click", () => {
-      document.querySelectorAll("[data-alert-filter]").forEach((button) => button.classList.remove("active"));
-      setAlertView("settings");
-    });
-
-    document.querySelector("[data-notice-form]")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const formData = new FormData(event.currentTarget);
-      const updated = state();
-      updated.noticeSettings = {
-        target: formData.get("target"),
-        type: formData.get("type"),
-      };
-      save(updated);
-      addLog("알림 설정 저장");
-      showToast("알림 설정을 저장했습니다.");
-    });
-
-    document.addEventListener("click", (event) => {
-      const backButton = event.target.closest("[data-alert-back]");
-      if (backButton) {
-        renderAlerts(state(), currentFilter);
-        return;
-      }
-
-      const item = event.target.closest("[data-alert-id]");
-      if (item) {
-        document.querySelectorAll("[data-alert-id]").forEach((node) => node.classList.toggle("active", node === item));
-        showAlertDetail(item.dataset.alertId);
-        return;
-      }
-
-      const button = event.target.closest("[data-read-alert]");
-      if (!button) return;
-      const updated = state();
-      const alert = updated.alerts.find((item) => String(item.id) === button.dataset.readAlert);
-      alert.read = true;
-      save(updated);
-      if (document.querySelector("[data-alert-detail-view]")?.classList.contains("active")) {
-        showAlertDetail(alert.id);
-      } else {
-        renderAlerts(updated, currentFilter);
-      }
-      showToast("알림을 읽음 처리했습니다.");
-    });
-  }
-
   function renderTransfers(next) {
     const list = document.querySelector("[data-transfers]");
     if (!list) return;
@@ -924,27 +830,26 @@ const App = (() => {
     });
   }
 
-  function mailAddressForUser(user) {
-    const id = user.userId || user.id || "user";
-    return `${id}@datavault.local`;
-  }
-
-  function renderMailRecipients(next) {
+  async function renderMailRecipients() {
     const target = document.querySelector("[data-mail-recipients]");
     if (!target) return;
-    const options = next.users.map((user) => {
-      const address = mailAddressForUser(user);
-      return `<option value="${address}" label="${user.name}"></option>`;
-    }).join("") + '<option value="external@gmail.com" label="외부메일 테스트"></option>';
-    target.innerHTML = options;
-  }
-
-  function renderMailDocuments(next) {
-    const select = document.querySelector("[data-mail-documents]");
-    if (!select) return;
-    select.innerHTML = '<option value="">첨부 없음</option>' + next.documents.map((doc) => (
-      `<option value="${doc.name}">${doc.name} · ${doc.grade}</option>`
+    const response = await apiRequest("/api/mail/recipients");
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.message || "사용자 목록을 불러오지 못했습니다.");
+    target.innerHTML = result.recipients.map((recipient) => (
+      `<option value="${escapeHTML(recipient.address)}" label="${escapeHTML(recipient.name)}"></option>`
     )).join("");
+    const note = document.querySelector("[data-mail-capability]");
+    if (note) {
+      const capabilities = result.capabilities || {};
+      const sendText = capabilities.externalTestMode
+        ? "외부 시험 발송 가능(Resend 계정 이메일만)"
+        : (capabilities.externalSend ? "외부 발송 가능" : "외부 발송 설정 필요");
+      const receiveText = capabilities.externalReceive
+        ? `외부 수신 주소: 사용자ID@${escapeHTML(capabilities.publicDomain)}`
+        : "외부 수신 도메인 설정 필요";
+      note.innerHTML = `<strong>@datavault.local</strong> 사내메일 · ${sendText} · ${receiveText}`;
+    }
   }
 
   function setMailView(view) {
@@ -956,64 +861,112 @@ const App = (() => {
     document.querySelector("[data-mail-compose]")?.classList.toggle("active", isCompose);
   }
 
-  function renderMails(box = "inbox") {
-    const next = state();
+  let activeMailBox = "inbox";
+
+  function formatMailDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+
+  async function renderMails(box = "inbox") {
     const list = document.querySelector("[data-mail-list]");
     const title = document.querySelector("[data-mail-title]");
     if (!list || !title) return;
-
+    activeMailBox = box;
     setMailView("list");
     document.querySelectorAll("[data-mail-box]").forEach((button) => {
       button.classList.toggle("active", button.dataset.mailBox === box);
     });
     title.textContent = box === "inbox" ? "받은 메일함" : "보낸 메일함";
-    const mails = next.mails.filter((mail) => mail.box === box);
+    list.innerHTML = '<li class="mail-item"><strong>메일을 불러오는 중입니다.</strong></li>';
+    const response = await apiRequest(`/api/mail/messages?box=${box}`);
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.message || "메일을 불러오지 못했습니다.");
+    const mails = result.messages;
 
     if (mails.length === 0) {
       list.innerHTML = '<li class="mail-item"><strong>메일이 없습니다.</strong><div class="mail-meta">새 메일을 작성해보세요.</div></li>';
       return;
     }
 
+    const deliveryLabel = { pending: "발송 중", sent: "발송 완료", failed: "발송 실패" };
     list.innerHTML = mails.map((mail) => `
       <li class="mail-item" data-mail-id="${mail.id}">
-        <strong>${mail.read ? "" : "● "}${mail.subject}</strong>
-        <div class="mail-meta">${box === "inbox" ? mail.from : mail.to} · ${mail.sentAt} · ${mail.grade}</div>
+        <strong>${mail.read ? "" : "● "}${escapeHTML(mail.subject)}${mail.hasAttachment ? " · 첨부" : ""}</strong>
+        <div class="mail-meta">${escapeHTML(mail.otherName)} &lt;${escapeHTML(mail.otherAddress)}&gt; · ${formatMailDate(mail.sentAt)} · ${escapeHTML(mail.grade)}${mail.direction === "outbound" ? ` · ${deliveryLabel[mail.deliveryStatus] || escapeHTML(mail.deliveryStatus)}` : ""}</div>
       </li>
     `).join("");
   }
 
-  function showMailDetail(mailId) {
-    const next = state();
-    const mail = next.mails.find((item) => String(item.id) === String(mailId));
+  async function showMailDetail(mailId) {
     const detail = document.querySelector("[data-mail-detail]");
-    if (!mail || !detail) return;
-
-    mail.read = true;
-    save(next);
+    if (!detail) return;
+    detail.innerHTML = "<p>메일을 불러오는 중입니다.</p>";
+    setMailView("detail");
+    const response = await apiRequest(`/api/mail/messages/${mailId}`);
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.message || "메일을 불러오지 못했습니다.");
+    const mail = result.message;
+    const deliveryLabel = { pending: "발송 중", sent: "발송 완료", failed: "발송 실패" };
+    const deliveryText = mail.direction === "outbound"
+      ? ` · 전달 상태: ${deliveryLabel[mail.deliveryStatus] || mail.deliveryStatus || "확인 중"}`
+      : "";
+    const attachments = mail.attachments || (mail.attachment ? [mail.attachment] : []);
+    const attachment = attachments.length
+      ? attachments.map((item) => `<button class="secondary-button small-button" type="button" data-mail-attachment-id="${item.id}" data-mail-attachment-name="${escapeHTML(item.name)}">첨부 다운로드 · ${escapeHTML(item.name)}</button>`).join(" ")
+      : '<span class="mail-meta">첨부 없음</span>';
     detail.innerHTML = `
       <div class="mail-detail-header">
         <div>
-          <h2>${mail.subject}</h2>
-          <p class="mail-meta">보낸 사람: ${mail.from}</p>
-          <p class="mail-meta">받는 사람: ${mail.to}</p>
-          <p class="mail-meta">보안 등급: ${mail.grade} · ${mail.sentAt}</p>
+          <h2>${escapeHTML(mail.subject)}</h2>
+          <p class="mail-meta">보낸 사람: ${escapeHTML(mail.senderName)} &lt;${escapeHTML(mail.from)}&gt;</p>
+          <p class="mail-meta">받는 사람: ${escapeHTML(mail.recipientName)} &lt;${escapeHTML(mail.to)}&gt;</p>
+          <p class="mail-meta">보안 등급: ${escapeHTML(mail.grade)} · ${formatMailDate(mail.sentAt)}${escapeHTML(deliveryText)}</p>
         </div>
         <button class="secondary-button small-button" type="button" data-mail-back>목록으로</button>
       </div>
       <div class="mail-detail-body">
-        <p>${mail.body}</p>
-        <p class="mail-meta" style="margin-top: 18px;">첨부 문서: ${mail.attachment || "없음"}</p>
+        <p style="white-space: pre-wrap;">${escapeHTML(mail.body)}</p>
+        <div style="margin-top: 18px;">${attachment}</div>
       </div>
     `;
     setMailView("detail");
-    addLog("사내메일 열람");
+    addLog("메일 열람");
   }
 
-  function initMail() {
-    const next = state();
-    renderMailRecipients(next);
-    renderMailDocuments(next);
-    renderMails("inbox");
+  async function fileAsBase64(file) {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let index = 0; index < bytes.length; index += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  async function downloadMailAttachment(id, name) {
+    const response = await apiRequest(`/api/mail/attachments/${id}`);
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.message || "첨부 파일을 다운로드하지 못했습니다.");
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name || "attachment";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function initMail() {
+    try {
+      await Promise.all([renderMailRecipients(), renderMails("inbox")]);
+    } catch (error) {
+      showToast(error.message);
+    }
 
     const attachmentDrop = document.querySelector("[data-mail-attachment-drop]");
     const attachmentInput = document.querySelector("[data-mail-attachment-file]");
@@ -1048,7 +1001,7 @@ const App = (() => {
 
     document.querySelectorAll("[data-mail-box]").forEach((button) => {
       button.addEventListener("click", () => {
-        renderMails(button.dataset.mailBox);
+        renderMails(button.dataset.mailBox).catch((error) => showToast(error.message));
       });
     });
 
@@ -1060,180 +1013,64 @@ const App = (() => {
     document.addEventListener("click", (event) => {
       const backButton = event.target.closest("[data-mail-back]");
       if (backButton) {
-        const activeBox = document.querySelector("[data-mail-box].active")?.dataset.mailBox || "inbox";
-        renderMails(activeBox);
+        renderMails(activeMailBox).catch((error) => showToast(error.message));
+        return;
+      }
+
+      const attachmentButton = event.target.closest("[data-mail-attachment-id]");
+      if (attachmentButton) {
+        downloadMailAttachment(attachmentButton.dataset.mailAttachmentId, attachmentButton.dataset.mailAttachmentName)
+          .catch((error) => showToast(error.message));
         return;
       }
 
       const item = event.target.closest("[data-mail-id]");
       if (!item) return;
       document.querySelectorAll("[data-mail-id]").forEach((node) => node.classList.toggle("active", node === item));
-      showMailDetail(item.dataset.mailId);
+      showMailDetail(item.dataset.mailId).catch((error) => showToast(error.message));
     });
 
-    document.querySelector("[data-mail-form]")?.addEventListener("submit", (event) => {
+    document.querySelector("[data-mail-form]")?.addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
       const formData = new FormData(form);
       const to = String(formData.get("to") || "").trim();
       const attachmentFile = form.querySelector("[data-mail-attachment-file]")?.files?.[0];
-      const attachment = attachmentFile ? attachmentFile.name : "";
-      const updated = state();
-      const now = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
-
-      if (!String(to).endsWith("@datavault.local")) {
-        updated.mails.unshift({
-          id: nextId(updated.mails),
-          from: mailAddressForUser(updated.profile),
-          to,
-          subject: formData.get("subject"),
-          body: formData.get("body"),
-          attachment,
-          grade: formData.get("grade"),
-          box: "sent",
-          read: true,
-          sentAt: now,
-          status: "외부 발송 차단",
-        });
-        save(updated);
-        addLog("외부메일 발송 차단", "차단");
-        showToast("외부 도메인 메일은 차단되었습니다.");
-        renderMails("sent");
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (attachmentFile && attachmentFile.size > 5 * 1024 * 1024) {
+        showToast("첨부 파일은 5MB 이하만 가능합니다.");
         return;
       }
-
-      const baseMail = {
-        id: nextId(updated.mails),
-        from: mailAddressForUser(updated.profile),
-        to,
-        subject: formData.get("subject"),
-        body: formData.get("body"),
-        attachment,
-        grade: formData.get("grade"),
-        read: false,
-        sentAt: now,
-        status: "발송 완료",
-      };
-      updated.mails.unshift({ ...baseMail, box: "sent", read: true });
-      updated.mails.unshift({ ...baseMail, id: nextId(updated.mails) + 1, box: "inbox" });
-      save(updated);
-      addLog("사내메일 발송");
-      form.reset();
-      setMailAttachment(null);
-      showToast("사내 메일을 발송했습니다.");
-      renderMails("sent");
-    });
-  }
-
-  function initSchedule() {
-    const next = state();
-    const calendar = document.querySelector("[data-calendar]");
-    const title = document.querySelector("[data-calendar-title]");
-    const list = document.querySelector("[data-schedule-list]");
-    const monthInput = document.querySelector("[data-calendar-month]");
-    if (!calendar || !title || !list || !monthInput) return;
-
-    const today = new Date();
-    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    let viewDate = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const scheduleGroups = [
-      { category: "회사", title: "회사 일정", className: "company" },
-      { category: "팀", title: "팀 일정", className: "team" },
-      { category: "개인", title: "개인 일정", className: "personal" },
-    ];
-
-    const scheduleCategory = (schedule, index) => {
-      if (schedule.category) return schedule.category;
-      if (schedule.type === "보안") return "회사";
-      if (schedule.type === "승인") return "팀";
-      return index % 3 === 0 ? "회사" : index % 3 === 1 ? "팀" : "개인";
-    };
-
-    const monthValue = (date) => {
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      return `${date.getFullYear()}-${month}`;
-    };
-
-    const renderCalendar = () => {
-      const year = viewDate.getFullYear();
-      const month = viewDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
-
-      monthInput.value = monthValue(viewDate);
-      title.textContent = `${year}년 ${month + 1}월 일정`;
-      const cells = weekdays.map((day) => `<div class="calendar-weekday">${day}</div>`);
-
-      for (let index = 0; index < firstDay.getDay(); index += 1) {
-        cells.push('<div class="calendar-day muted"></div>');
+      submitButton.disabled = true;
+      submitButton.textContent = "보내는 중...";
+      try {
+        const attachment = attachmentFile ? {
+          name: attachmentFile.name,
+          contentType: attachmentFile.type || "application/octet-stream",
+          data: await fileAsBase64(attachmentFile),
+        } : null;
+        const response = await apiRequest("/api/mail/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to, subject: formData.get("subject"), body: formData.get("body"),
+            grade: formData.get("grade"), attachment,
+          }),
+        });
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.message || "메일을 보내지 못했습니다.");
+        form.reset();
+        setMailAttachment(null);
+        addLog("메일 발송");
+        showToast(result.message);
+        await renderMails("sent");
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "메일 보내기";
       }
-
-      for (let day = 1; day <= lastDay.getDate(); day += 1) {
-        const isToday = isCurrentMonth && day === today.getDate();
-        const visibleSchedules = next.schedules.slice(0, 3);
-        const chips = isToday ? visibleSchedules.map((schedule) => (
-          `<span class="schedule-chip">${schedule.time} ${schedule.title}</span>`
-        )).join("") : "";
-        const moreChip = isToday && next.schedules.length > visibleSchedules.length
-          ? `<span class="schedule-chip">+${next.schedules.length - visibleSchedules.length}개 일정</span>`
-          : "";
-        cells.push(`
-          <div class="calendar-day${isToday ? " today" : ""}">
-            <span class="day-number">${day}</span>
-            ${chips}
-            ${moreChip}
-          </div>
-        `);
-      }
-
-      calendar.innerHTML = cells.join("");
-    };
-
-    renderCalendar();
-    list.innerHTML = scheduleGroups.map((group) => {
-      const items = next.schedules.filter((schedule, index) => scheduleCategory(schedule, index) === group.category);
-      const rows = items.length > 0 ? items.slice(0, 3).map((schedule) => `
-        <li class="schedule-section-item">
-          <strong>${schedule.time} · ${schedule.title}</strong>
-          <span>${schedule.description}</span>
-        </li>
-      `).join("") : '<li class="schedule-empty">등록된 일정이 없습니다.</li>';
-
-      return `
-        <section class="schedule-section ${group.className}">
-          <div class="schedule-section-title">${group.title}</div>
-          <ol class="schedule-section-list">
-            ${rows}
-          </ol>
-        </section>
-      `;
-    }).join("");
-
-    document.querySelector("[data-calendar-prev]")?.addEventListener("click", () => {
-      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-      renderCalendar();
     });
-
-    document.querySelector("[data-calendar-next]")?.addEventListener("click", () => {
-      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
-      renderCalendar();
-    });
-
-    document.querySelector("[data-calendar-today]")?.addEventListener("click", () => {
-      viewDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      renderCalendar();
-    });
-
-    const syncSelectedMonth = () => {
-      const [year, month] = monthInput.value.split("-").map(Number);
-      if (!year || !month) return;
-      viewDate = new Date(year, month - 1, 1);
-      renderCalendar();
-    };
-
-    monthInput.addEventListener("change", syncSelectedMonth);
   }
 
   async function init() {
@@ -1258,15 +1095,16 @@ const App = (() => {
     if (page === "users") initUsers();
     if (page === "grades") initGrades();
     if (page === "logs") initLogs();
-    if (page === "alerts") initAlerts();
     if (page === "transfers") initTransfers();
     if (page === "mypage") initMypage();
     if (page === "admin-settings") initAdminSettings();
-    if (page === "mail") initMail();
-    if (page === "schedule") initSchedule();
+    if (page === "mail") await initMail();
   }
 
-  return { init };
+  return {
+    init,
+    core: { state, save, todayKey, nextId, escapeHTML, showToast, addLog },
+  };
 })();
 
 document.addEventListener("DOMContentLoaded", App.init);

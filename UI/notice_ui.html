@@ -53,6 +53,21 @@
       min-height: 640px;
     }
 
+    .notice-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      margin: 14px 0;
+    }
+
+    .notice-count {
+      color: #426b80;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
     .notice-view {
       display: none;
     }
@@ -68,6 +83,10 @@
     }
 
     .notice-item {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
       padding: 14px;
       border: 1px solid #d7ecff;
       border-radius: 8px;
@@ -84,6 +103,33 @@
     .notice-item strong {
       display: block;
       margin-bottom: 6px;
+    }
+
+    .notice-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: transparent;
+    }
+
+    .notice-item.unread .notice-dot {
+      background: #1f75d6;
+    }
+
+    .notice-item-time {
+      color: #7290a6;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .notice-empty {
+      display: grid;
+      place-items: center;
+      min-height: 360px;
+      border: 1px dashed #b9d8f6;
+      border-radius: 8px;
+      color: #5b7c93;
+      text-align: center;
     }
 
     .notice-meta {
@@ -121,12 +167,55 @@
       line-height: 1.7;
     }
 
+    .notice-detail-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .notice-detail-summary div {
+      padding: 12px;
+      border: 1px solid #d7ecff;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .notice-detail-summary span,
+    .notice-detail-summary strong {
+      display: block;
+    }
+
+    .notice-detail-summary span {
+      margin-bottom: 5px;
+      color: #7290a6;
+      font-size: 12px;
+    }
+
+    .danger-button {
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid #f2b8b8;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #b42323;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
     @media (max-width: 1000px) {
       .notice-layout {
         grid-template-columns: 1fr;
       }
+
+      .notice-toolbar,
+      .notice-detail-summary {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
+  <link rel="stylesheet" href="nova_theme.css">
 </head>
 <body data-page="alerts">
   <nav class="global-nav" aria-label="공통 메뉴">
@@ -164,6 +253,11 @@
       <article class="card panel notice-main">
         <section class="notice-view active" data-alert-list-view>
           <h2 data-alert-title>전체 알림</h2>
+          <div class="notice-toolbar">
+            <input type="search" data-alert-search placeholder="제목 또는 내용 검색" aria-label="알림 검색">
+            <span class="notice-count" data-alert-count>0개 알림</span>
+            <button class="secondary-button small-button" type="button" data-read-all-alerts>전체 읽음</button>
+          </div>
           <ul class="notice-list" data-alerts></ul>
         </section>
 
@@ -194,6 +288,8 @@
       </article>
     </section>
   </main>
+  <script src="nova_shell.js"></script>
   <script src="app_frontend.js"></script>
+  <script src="notice_frontend.js"></script>
 </body>
 </html>

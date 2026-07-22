@@ -22,17 +22,19 @@ services:
         sync: false
       - key: PUBLIC_BASE_URL
         value: https://main-server-project.onrender.com
-      - key: SMTP_HOST
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PORT
-        value: 587
-      - key: SMTP_USER
+      - key: RESEND_WEBHOOK_SECRET
         sync: false
-      - key: SMTP_PASSWORD
+      - key: RESEND_FROM_DOMAIN
         sync: false
-      - key: SMTP_SENDER
+      - key: RESEND_FROM_ADDRESS
         sync: false
-      - key: SMTP_STARTTLS
-        value: true
+      - key: MAIL_PUBLIC_DOMAIN
+        sync: false
+      - key: MAIL_ALLOW_CLASSIFIED_EXTERNAL
+        value: false
       - key: EXPOSE_RESET_LINK
         value: false

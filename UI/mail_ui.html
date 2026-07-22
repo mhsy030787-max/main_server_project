@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>사내 메일</title>
+  <title>통합 메일</title>
   <link rel="stylesheet" href="service_common.css">
   <style>
     .page {
@@ -194,13 +194,14 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="nova_theme.css">
 </head>
 <body data-page="mail">
   <nav class="global-nav" aria-label="공통 메뉴">
     <a class="global-nav-mark" href="main_ui.html" title="DataVault">D</a>
     <a class="global-nav-link" data-nav="main" href="main_ui.html" title="대시보드">⌂</a>
     <a class="global-nav-link" data-nav="documents" href="document_ui.html" title="문서 관리">▤</a>
-    <a class="global-nav-link" data-nav="mail" href="mail_ui.html" title="사내 메일">✉</a>
+    <a class="global-nav-link" data-nav="mail" href="mail_ui.html" title="통합 메일">✉</a>
     <a class="global-nav-link" data-nav="logs" href="log_ui.html" title="로그 조회">◷</a>
     <a class="global-nav-link" data-nav="alerts" href="notice_ui.html" title="알림">!</a>
     <a class="global-nav-link" data-nav="schedule" href="schedule_ui.html" title="일정">□</a>
@@ -209,8 +210,8 @@
   <main class="page">
     <section class="topbar">
       <div>
-        <h1>사내 메일</h1>
-        <p>@datavault.local 내부 사용자끼리 보안 메일을 주고받습니다.</p>
+        <h1>통합 메일</h1>
+        <p>사내 사용자와 외부 이메일 주소로 업무 메일을 주고받습니다.</p>
       </div>
       <a class="back-link" href="main_ui.html">대시보드로</a>
     </section>
@@ -237,12 +238,12 @@
 
         <section class="mail-view" data-mail-compose-view>
           <h2>메일 작성</h2>
-          <div class="domain-note">
-            현재는 <strong>@datavault.local</strong> 내부 도메인만 발송됩니다. 외부 도메인은 차단 로그로 기록됩니다.
+          <div class="domain-note" data-mail-capability>
+            메일 서버 설정을 확인하는 중입니다.
           </div>
           <form class="form mail-compose-form" data-mail-form>
             <label>받는 사람
-              <input name="to" type="email" list="mailRecipients" placeholder="예: staff01@datavault.local" required>
+              <input name="to" type="email" list="mailRecipients" placeholder="예: staff01@datavault.local 또는 user@example.com" required>
               <datalist id="mailRecipients" data-mail-recipients></datalist>
             </label>
             <label>제목
@@ -271,6 +272,7 @@
       </article>
     </section>
   </main>
+  <script src="nova_shell.js"></script>
   <script src="app_frontend.js"></script>
 </body>
 </html>

@@ -75,16 +75,16 @@ pip install -r requirements.txt
 
 ```text
 PUBLIC_BASE_URL=https://main-server-project.onrender.com
-SMTP_HOST=메일서버주소
-SMTP_PORT=587
-SMTP_USER=메일계정
-SMTP_PASSWORD=메일비밀번호
-SMTP_SENDER=발신이메일주소
-SMTP_STARTTLS=true
+MAIL_PROVIDER=resend
+RESEND_API_KEY=Resend_API_키
+RESEND_FROM_DOMAIN=검증한_발신_도메인
 EXPOSE_RESET_LINK=false
 ```
 
-로컬 개발에서는 SMTP 설정이 없을 때 화면에 테스트용 재설정 링크가 표시됩니다. 운영 환경에서는 `EXPOSE_RESET_LINK=false`를 유지해야 합니다.
+일반 외부 메일과 비밀번호 재설정 메일 모두 Resend HTTPS API로 발송합니다. 로컬 개발에서는
+외부 메일 설정이 없을 때 화면에 테스트용 재설정 링크가 표시됩니다. 운영 환경에서는
+`EXPOSE_RESET_LINK=false`를 유지해야 합니다. 자세한 도메인 및 수신 웹훅 설정은
+`docs/external-mail-setup.md`를 참고합니다.
 
 ## 회원가입 규칙
 

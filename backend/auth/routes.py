@@ -23,8 +23,8 @@ from auth.password_reset import (
     consume_reset_token,
     create_reset_token,
     make_reset_url,
+    reset_mail_is_configured,
     send_reset_email,
-    smtp_is_configured,
 )
 from security.passwords import verify_password
 from settings import ACCESS_TOKEN_SECONDS, EXPOSE_RESET_LINK, PUBLIC_BASE_URL
@@ -186,7 +186,7 @@ def handle_api_post(handler):
         return
 
     if handler.path == "/api/password-reset/request":
-        if not smtp_is_configured() and not EXPOSE_RESET_LINK:
+        if not reset_mail_is_configured() and not EXPOSE_RESET_LINK:
             handler.send_json(
                 {"ok": False, "message": "비밀번호 재설정 메일 서버가 준비되지 않았습니다."},
                 HTTPStatus.SERVICE_UNAVAILABLE,

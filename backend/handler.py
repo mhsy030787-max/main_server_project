@@ -1,9 +1,11 @@
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 import json
+from urllib.parse import quote
 
 from auth.routes import handle_api_get, handle_api_post
 from http_utils import json_bytes
+from mail.routes import handle_mail_get, handle_mail_post
 from static_files import serve_static_file
 
 
@@ -30,6 +32,8 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith("/api/"):
+            if handle_mail_get(self):
+                return
             handle_api_get(self)
             return
 
@@ -37,6 +41,8 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path.startswith("/api/"):
+            if handle_mail_post(self):
+                return
             handle_api_post(self)
             return
 
@@ -63,3 +69,12 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_header(key, value)
         self.end_headers()
         self.wfile.write(body)
+
+    def send_bytes(self, data, content_type, file_name):
+        safe_name = quote(str(file_name).replace('"', ""))
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type or "application/octet-stream")
+        self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{safe_name}")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
