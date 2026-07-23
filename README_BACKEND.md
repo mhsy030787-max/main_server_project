@@ -86,6 +86,31 @@ EXPOSE_RESET_LINK=false
 `EXPOSE_RESET_LINK=false`를 유지해야 합니다. 자세한 도메인 및 수신 웹훅 설정은
 `docs/external-mail-setup.md`를 참고합니다.
 
+## 메일 API
+
+메일 기능은 라우트, 서비스, 저장소, 외부 전송 모듈로 분리되어 있습니다. 사내 메일은
+MySQL에 즉시 저장하고, 외부 메일은 MySQL에 발송 상태를 먼저 기록한 뒤 Resend 또는 SMTP로
+전송합니다.
+
+- `GET /api/mail/recipients`: 사내 수신자와 외부 메일 기능 상태 조회
+- `GET /api/mail/messages?box=inbox`: 받은 메일함 조회
+- `GET /api/mail/messages?box=sent`: 보낸 메일함 조회
+- `GET /api/mail/messages?box=draft`: 임시보관함 조회
+- `GET /api/mail/messages?box=trash`: 휴지통 조회
+- `GET /api/mail/messages/{id}`: 메일 상세 조회
+- `GET /api/mail/attachments/{id}`: 권한이 있는 첨부 파일 다운로드
+- `POST /api/mail/messages`: 사내 또는 외부 메일 발송
+- `POST /api/mail/drafts`: 임시 메일 생성 또는 수정
+- `POST /api/mail/messages/{id}/trash`: 휴지통으로 이동
+- `POST /api/mail/messages/{id}/restore`: 원래 메일함으로 복원
+- `POST /api/mail/messages/{id}/delete`: 휴지통에서 영구 삭제
+- `POST /api/mail/messages/{id}/retry`: 실패한 외부 메일 재발송
+- `POST /api/mail/inbound`: 외부 메일 수신 웹훅
+
+메일과 첨부 파일은 로그인 사용자별로 조회 권한을 검사합니다. 기밀 및 최고기밀 메일의 외부
+발송은 기본적으로 차단되며, 운영 정책상 꼭 필요한 경우에만
+`MAIL_ALLOW_CLASSIFIED_EXTERNAL=true`로 변경합니다.
+
 ## 회원가입 규칙
 
 - 이름: 한글 또는 영문 2~30자
@@ -146,3 +171,5 @@ https://main-server-project.onrender.com/api/health
 `storage`가 `memory`라면 Render에 MySQL 환경변수가 없거나, 접속 정보가 틀린 상태입니다.
 
 문서, 권한, 사용자, 등급, 로그, 알림, 파일 전송 화면은 현재 프론트엔드 로컬 상태로 동작합니다.
+메일은 MySQL이 연결되면 서버에 영구 저장되고, MySQL 설정이 없을 때는 개발용 메모리 저장소를
+사용하므로 서버 재시작 시 메일이 사라집니다.

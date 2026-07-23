@@ -114,6 +114,46 @@
       line-height: 1.7;
     }
 
+    .mail-detail-actions,
+    .mail-form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mail-form-actions .primary-button {
+      flex: 1 1 220px;
+    }
+
+    .mail-form-actions .secondary-button {
+      flex: 0 0 auto;
+      min-height: 44px;
+    }
+
+    .mail-item[data-mail-id] {
+      width: 100%;
+      text-align: left;
+    }
+
+    .mail-item-status {
+      display: inline-block;
+      margin-left: 6px;
+      color: #0753b7;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .mail-danger-button {
+      border-color: #e6a7a7;
+      color: #a63232;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.62;
+    }
+
     .domain-note {
       margin-bottom: 14px;
       padding: 12px;
@@ -222,6 +262,8 @@
         <nav class="mail-nav">
           <button class="mail-tab active" type="button" data-mail-box="inbox">받은 메일함</button>
           <button class="mail-tab" type="button" data-mail-box="sent">보낸 메일함</button>
+          <button class="mail-tab" type="button" data-mail-box="draft">임시보관함</button>
+          <button class="mail-tab" type="button" data-mail-box="trash">휴지통</button>
           <button class="mail-tab compose-tab" type="button" data-mail-compose>메일 작성</button>
         </nav>
       </aside>
@@ -237,11 +279,12 @@
         </section>
 
         <section class="mail-view" data-mail-compose-view>
-          <h2>메일 작성</h2>
+          <h2 data-mail-compose-title>메일 작성</h2>
           <div class="domain-note" data-mail-capability>
             메일 서버 설정을 확인하는 중입니다.
           </div>
           <form class="form mail-compose-form" data-mail-form>
+            <input name="messageId" type="hidden" data-mail-message-id>
             <label>받는 사람
               <input name="to" type="email" list="mailRecipients" placeholder="예: staff01@datavault.local 또는 user@example.com" required>
               <datalist id="mailRecipients" data-mail-recipients></datalist>
@@ -266,13 +309,17 @@
             <label>본문
               <textarea name="body" placeholder="메일 내용을 입력하세요" required></textarea>
             </label>
-            <button class="primary-button" type="submit">메일 보내기</button>
+            <div class="mail-form-actions">
+              <button class="primary-button" type="submit" data-mail-send>메일 보내기</button>
+              <button class="secondary-button" type="button" data-mail-save-draft>임시 저장</button>
+            </div>
           </form>
         </section>
       </article>
     </section>
   </main>
   <script src="nova_shell.js"></script>
+  <script src="mail_frontend.js"></script>
   <script src="app_frontend.js"></script>
 </body>
 </html>

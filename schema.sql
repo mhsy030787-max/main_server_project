@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS mail_messages (
   direction VARCHAR(16) NOT NULL DEFAULT 'internal',
   delivery_status VARCHAR(24) NOT NULL DEFAULT 'delivered',
   provider_message_id VARCHAR(255) NULL,
+  sender_box VARCHAR(16) NOT NULL DEFAULT 'sent',
+  sender_previous_box VARCHAR(16) NULL,
   sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_mail_messages_sender_sent (sender_id, sent_at),
   CONSTRAINT fk_mail_messages_sender FOREIGN KEY (sender_id)
@@ -41,6 +43,8 @@ CREATE TABLE IF NOT EXISTS mail_recipients (
   recipient_id VARCHAR(64) NOT NULL,
   recipient_address VARCHAR(254) NULL,
   recipient_name VARCHAR(120) NULL,
+  recipient_box VARCHAR(16) NOT NULL DEFAULT 'inbox',
+  recipient_previous_box VARCHAR(16) NULL,
   read_at TIMESTAMP NULL,
   PRIMARY KEY (message_id, recipient_id),
   INDEX idx_mail_recipients_inbox (recipient_id, message_id),
